@@ -25,8 +25,26 @@ Built for **Cotton Solution** (Hasnain Corporation & H.A. Cotton Ginners).
    - Document Upload (PDF files upload with Name & Detail, plus edit/delete/view)
    - Slides & Announcements Management
 
-## ⚙️ Deployment Instructions
+## ⚙️ Setup Instructions (Real Supabase Connection)
+
 1. Extract this ZIP file.
 2. Install dependencies: `npm install`
-3. Run locally: `npm run dev`
-4. Upload to **GitHub** and connect your repository to **Vercel** for instant deployment.
+3. **Set up the database:**
+   - Go to your Supabase project → **SQL Editor** → New Query.
+   - Paste the entire contents of `supabase/schema.sql` and run it.
+   - This creates all tables, security rules, storage buckets (`media`, `documents`), and an auto-profile trigger.
+4. **Add your credentials:**
+   - Copy `.env.local.example` to a new file named `.env.local`.
+   - Fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from Supabase → Settings → API Keys (use the **publishable/anon** key only, never the secret key).
+5. **Enable email OTP (optional but recommended — Resend as SMTP):**
+   - In Supabase → **Authentication → Providers → Email**, make sure "Email OTP" is enabled.
+   - In Supabase → **Project Settings → Authentication → SMTP Settings**, add your Resend SMTP credentials so OTP emails are sent via Resend instead of Supabase's limited default sender.
+6. **Make yourself an admin:**
+   - Run `npm run dev` and register once on the `/login` page with your own email — this creates your profile.
+   - Back in Supabase SQL Editor, run:
+     ```sql
+     update profiles set role = 'admin', status = 'Active' where email = 'your-email@example.com';
+     ```
+   - Now `/admin/dashboard` will let you in.
+7. Run locally: `npm run dev`
+8. Upload to **GitHub** and connect your repository to **Vercel** for instant deployment. On Vercel, add the same two `NEXT_PUBLIC_SUPABASE_*` environment variables under Project Settings → Environment Variables.

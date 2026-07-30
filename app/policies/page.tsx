@@ -1,16 +1,30 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, FileCheck } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+
+type Policy = {
+  id: string;
+  title: string;
+  content: string | null;
+  effective_date: string | null;
+};
 
 export default function PoliciesPage() {
-  const [policies] = useState([
-    {
-      id: 1,
-      title: "Commercial Lease & Factory Operating Guidelines",
-      date: "Effective Jan 2026",
-      content: "Detailed operational protocols for factory leases, safety standards, and environmental compliance under cotton ginning norms."
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase
+        .from('policies')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) setPolicies(data as Policy[]);
+      setLoading(false);
     }
-  ]);
+    load();
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -21,6 +35,11 @@ export default function PoliciesPage() {
         <p className="text-gray-600 mt-1">Official corporate and industrial governance policies.</p>
       </div>
 
+      {loading && <p className="text-gray-500 text-sm">Loading policies...</p>}
+      {!loading && policies.length === 0 && (
+        <p className="text-gray-500 text-sm">No policies published yet.</p>
+      )}
+
       <div className="space-y-6">
         {policies.map((policy) => (
           <div key={policy.id} className="card-3d p-8 border border-gray-100 flex items-start space-x-4">
@@ -28,7 +47,7 @@ export default function PoliciesPage() {
               <FileCheck size={28}/>
             </div>
             <div>
-              <span className="text-xs font-bold text-emerald-600">{policy.date}</span>
+              <span className="text-xs font-bold text-emerald-600">{policy.effective_date}</span>
               <h2 className="text-xl font-bold text-gray-900 mt-1 mb-2">{policy.title}</h2>
               <p className="text-gray-700 leading-relaxed">{policy.content}</p>
             </div>
