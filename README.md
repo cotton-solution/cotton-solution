@@ -71,12 +71,25 @@ Then open http://localhost:3000
 - All forms responsive: line-item tables scroll horizontally on narrow
   screens instead of clipping
 
+**Step 5: Crops** ✅
+- Crops hub (`/crops`) with 7 cards: Crop Units, Purchase/Sale Contracts,
+  Purchase/Sale Weighment, Crop Purchase/Sale Invoice
+- `/crops/units`: editable table of standard crop units (pre-seeded with
+  Cotton @ 40 KGS/Maund and Wheat @ 37.324 KGS/Maund), add/remove your own
+- Reusable `ContractForm`: party, crop, unit, quantity, rate, advance —
+  auto-calculates contract value and balance due
+- Reusable `WeighmentForm`: vehicle #, party, crop, bag count, gross/tare
+  weight — auto-calculates net weight
+- Crop Purchase/Sale Invoice pages reuse the same `InvoiceForm` from
+  Step 4 (with brokerage %), so crop invoicing gets commission calculation
+  for free
+
 **Still to come (next steps):**
 - Accounts Forms vouchers (Cash Receiving, Cash Payment, Journal, Bank
   Cheque Deposit/Issue, Cash Payment WHT) are still placeholders
-- Crops module (contracts, weighment, crop invoices)
 - Supabase schema + wiring (chart_of_accounts, parties_customers, vouchers,
   transactions, weighment_slips, invoices) to replace in-memory mock data
+- Login/authentication (currently the app opens straight into the dashboard)
 
 ## Tech stack
 - Next.js 14 (App Router), TypeScript
