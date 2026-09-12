@@ -1,20 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { DataModeBanner } from "@/components/data-mode-banner";
 import { mockParties } from "@/lib/party-data";
 import { cropNames, defaultCropUnits } from "@/lib/crops";
+import { saveContract } from "@/lib/supabase/contracts";
 
 export function ContractForm({
   title,
   invoicePrefix,
+  contractType,
   partyLabel,
 }: {
   title: string;
   invoicePrefix: string;
+  contractType: "purchase" | "sale";
   partyLabel: "Vendor" | "Customer";
 }) {
   const [contractNo] = useState(
@@ -32,9 +37,35 @@ export function ContractForm({
   const [advance, setAdvance] = useState<number>(0);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const contractValue = quantity * rate;
   const balance = contractValue - advance;
+
+  async function handleSave() {
+    setError(null);
+    setSaving(true);
+    const { error } = await saveContract({
+      contractNo,
+      contractType,
+      contractDate,
+      deliveryDate: deliveryDate || undefined,
+      partyId,
+      crop,
+      unit,
+      quantity,
+      rate,
+      advance,
+      notes,
+    });
+    setSaving(false);
+    if (error) {
+      setError(error);
+      return;
+    }
+    setSaved(true);
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -52,6 +83,15 @@ export function ContractForm({
           </span>
         )}
       </div>
+
+      <DataModeBanner />
+
+      {error && (
+        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">
+          <CircleAlert size={14} />
+          {error}
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-card space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -206,7 +246,9 @@ export function ContractForm({
         <Button variant="secondary" onClick={() => window.print()}>
           Print
         </Button>
-        <Button onClick={() => setSaved(true)}>Save Contract</Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? "Saving…" : "Save Contract"}
+        </Button>
       </div>
     </div>
   );

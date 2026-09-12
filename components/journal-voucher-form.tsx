@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, CheckCircle2, CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { DataModeBanner } from "@/components/data-mode-banner";
 import { journalAccounts } from "@/lib/chart-of-accounts";
+import { saveJournalVoucher } from "@/lib/supabase/vouchers";
 
 type JournalLine = {
   id: string;
@@ -18,7 +20,7 @@ type JournalLine = {
 function newLine(): JournalLine {
   return {
     id: Math.random().toString(36).slice(2, 9),
-    account: journalAccounts[0],
+    account: journalAccounts[0].code,
     debit: 0,
     credit: 0,
   };
@@ -32,6 +34,8 @@ export function JournalVoucherForm() {
   const [narration, setNarration] = useState("");
   const [lines, setLines] = useState<JournalLine[]>([newLine(), newLine()]);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const totalDebit = useMemo(
     () => lines.reduce((s, l) => s + l.debit, 0),
@@ -60,8 +64,19 @@ export function JournalVoucherForm() {
     setSaved(false);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!isBalanced) return;
+    setError(null);
+    setSaving(true);
+    const { error } = await saveJournalVoucher(
+      { voucherNo, date, narration },
+      lines.map((l) => ({ account: l.account, debit: l.debit, credit: l.credit }))
+    );
+    setSaving(false);
+    if (error) {
+      setError(error);
+      return;
+    }
     setSaved(true);
   }
 
@@ -83,6 +98,15 @@ export function JournalVoucherForm() {
           </span>
         )}
       </div>
+
+      <DataModeBanner />
+
+      {error && (
+        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">
+          <CircleAlert size={14} />
+          {error}
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-card space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -141,7 +165,9 @@ export function JournalVoucherForm() {
                         className="h-9"
                       >
                         {journalAccounts.map((a) => (
-                          <option key={a}>{a}</option>
+                          <option key={a.code} value={a.code}>
+                            {a.name}
+                          </option>
                         ))}
                       </Select>
                     </td>
@@ -234,8 +260,8 @@ export function JournalVoucherForm() {
         <Button variant="secondary" onClick={() => window.print()}>
           Print
         </Button>
-        <Button onClick={handleSave} disabled={!isBalanced}>
-          Save Voucher
+        <Button onClick={handleSave} disabled={!isBalanced || saving}>
+          {saving ? "Saving…" : "Save Voucher"}
         </Button>
       </div>
     </div>

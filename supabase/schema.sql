@@ -71,7 +71,7 @@ create table if not exists vouchers (
     )
   ),
   voucher_date date not null,
-  party_id uuid references parties_customers(id),
+  party_id text references parties_customers(party_id),
   bank_account text,
   cheque_no text,
   cheque_date date,
@@ -116,7 +116,7 @@ create table if not exists contracts (
   contract_type text not null check (contract_type in ('purchase', 'sale')),
   contract_date date not null,
   delivery_date date,
-  party_id uuid references parties_customers(id),
+  party_id text references parties_customers(party_id),
   crop text,
   unit text,
   quantity numeric(12, 2) not null default 0,
@@ -135,7 +135,7 @@ create table if not exists weighment_slips (
   slip_type text not null check (slip_type in ('purchase', 'sale')),
   slip_date date not null,
   vehicle_no text,
-  party_id uuid references parties_customers(id),
+  party_id text references parties_customers(party_id),
   crop text,
   bags integer not null default 0,
   gross_weight numeric(10, 2) not null default 0,
@@ -155,7 +155,7 @@ create table if not exists invoices (
   ),
   invoice_type text not null check (invoice_type in ('purchase', 'sale')),
   invoice_date date not null,
-  party_id uuid references parties_customers(id),
+  party_id text references parties_customers(party_id),
   subtotal numeric(14, 2) not null default 0,
   brokerage_percent numeric(5, 2) not null default 0,
   brokerage_amount numeric(14, 2) not null default 0,
@@ -187,7 +187,7 @@ create table if not exists invoice_batches (
 create table if not exists invoice_batch_lines (
   id uuid primary key default gen_random_uuid(),
   batch_id uuid not null references invoice_batches(id) on delete cascade,
-  party_id uuid references parties_customers(id),
+  party_id text references parties_customers(party_id),
   invoice_type text not null check (invoice_type in ('purchase', 'sale')),
   amount numeric(14, 2) not null default 0
 );
@@ -235,6 +235,19 @@ end $$;
 -- ------------------------------------------------------------
 -- Seed data (matches the demo data used in the app's mock mode)
 -- ------------------------------------------------------------
+insert into chart_of_accounts (code, name, account_type) values
+  ('1010001', 'Cash in Hand', 'asset'),
+  ('1020001', 'HBL - Multan Cotton Market Branch', 'asset'),
+  ('1020002', 'MCB - Vehari Branch', 'asset'),
+  ('4010001', 'Brokerage Commission Income', 'income'),
+  ('5010001', 'Office & Admin Expenses', 'expense'),
+  ('5010002', 'Labour & Loading Charges', 'expense'),
+  ('2010001', 'Withholding Tax Payable', 'liability'),
+  ('6210001', 'Muhammad Ashraf & Sons', 'asset'),
+  ('6210002', 'Al-Barkat Cotton Factory', 'asset'),
+  ('6210003', 'DHA Traders', 'asset')
+on conflict do nothing;
+
 insert into crop_units (crop, unit_name, kgs_per_unit) values
   ('Cotton', 'Maund', 40),
   ('Wheat', 'Maund', 37.324)

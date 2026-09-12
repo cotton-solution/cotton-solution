@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { DataModeBanner } from "@/components/data-mode-banner";
 import { mockParties } from "@/lib/party-data";
+import { saveInvoice, type InvoiceCategory } from "@/lib/supabase/invoices";
 
 type LineItem = {
   id: string;
@@ -31,11 +33,15 @@ function newLine(): LineItem {
 export function InvoiceForm({
   title,
   invoicePrefix,
+  category,
+  invoiceType,
   partyLabel,
   includeBrokerage,
 }: {
   title: string;
   invoicePrefix: string;
+  category: InvoiceCategory;
+  invoiceType: "purchase" | "sale";
   partyLabel: "Vendor" | "Customer";
   includeBrokerage: boolean;
 }) {
@@ -46,6 +52,8 @@ export function InvoiceForm({
   const [lines, setLines] = useState<LineItem[]>([newLine()]);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const subtotal = useMemo(
     () => lines.reduce((sum, l) => sum + l.qty * l.rate, 0),
@@ -75,7 +83,32 @@ export function InvoiceForm({
     setSaved(false);
   }
 
-  function handleSave() {
+  async function handleSave() {
+    setError(null);
+    setSaving(true);
+    const { error } = await saveInvoice({
+      invoiceNo,
+      category,
+      invoiceType,
+      invoiceDate: date,
+      partyId,
+      subtotal,
+      brokeragePercent: includeBrokerage ? brokeragePercent : 0,
+      brokerageAmount,
+      netTotal: grandTotal,
+      notes,
+      lines: lines.map((l) => ({
+        description: l.description,
+        unit: l.unit,
+        qty: l.qty,
+        rate: l.rate,
+      })),
+    });
+    setSaving(false);
+    if (error) {
+      setError(error);
+      return;
+    }
     setSaved(true);
   }
 
@@ -94,6 +127,15 @@ export function InvoiceForm({
           </span>
         )}
       </div>
+
+      <DataModeBanner />
+
+      {error && (
+        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">
+          <CircleAlert size={14} />
+          {error}
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-card space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -289,7 +331,9 @@ export function InvoiceForm({
         <Button variant="secondary" onClick={() => window.print()}>
           Print
         </Button>
-        <Button onClick={handleSave}>Save</Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
       </div>
     </div>
   );

@@ -1,20 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { DataModeBanner } from "@/components/data-mode-banner";
 import { mockParties } from "@/lib/party-data";
 import { cropNames } from "@/lib/crops";
+import { saveWeighment } from "@/lib/supabase/weighment";
 
 export function WeighmentForm({
   title,
   slipPrefix,
+  slipType,
   partyLabel,
 }: {
   title: string;
   slipPrefix: string;
+  slipType: "purchase" | "sale";
   partyLabel: "Vendor" | "Customer";
 }) {
   const [slipNo] = useState(
@@ -28,8 +33,32 @@ export function WeighmentForm({
   const [grossWeight, setGrossWeight] = useState<number>(0);
   const [tareWeight, setTareWeight] = useState<number>(0);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const netWeight = Math.max(grossWeight - tareWeight, 0);
+
+  async function handleSave() {
+    setError(null);
+    setSaving(true);
+    const { error } = await saveWeighment({
+      slipNo,
+      slipType,
+      slipDate: date,
+      vehicleNo,
+      partyId,
+      crop,
+      bags,
+      grossWeight,
+      tareWeight,
+    });
+    setSaving(false);
+    if (error) {
+      setError(error);
+      return;
+    }
+    setSaved(true);
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -47,6 +76,15 @@ export function WeighmentForm({
           </span>
         )}
       </div>
+
+      <DataModeBanner />
+
+      {error && (
+        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">
+          <CircleAlert size={14} />
+          {error}
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-card space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -162,7 +200,9 @@ export function WeighmentForm({
         <Button variant="secondary" onClick={() => window.print()}>
           Print Slip
         </Button>
-        <Button onClick={() => setSaved(true)}>Save Slip</Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? "Saving…" : "Save Slip"}
+        </Button>
       </div>
     </div>
   );

@@ -2,14 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, LogOut, Power, Sprout } from "lucide-react";
 import { navSections } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth-provider";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuth();
+
+  async function handleLogOut() {
+    setOpen(false);
+    await signOut();
+    router.push("/login");
+  }
 
   return (
     <>
@@ -77,7 +86,10 @@ export function MobileNav() {
             </nav>
 
             <div className="border-t border-slate-200 p-3 space-y-1">
-              <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50">
+              <button
+                onClick={handleLogOut}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
                 <LogOut size={18} className="text-slate-400" />
                 Log Out
               </button>

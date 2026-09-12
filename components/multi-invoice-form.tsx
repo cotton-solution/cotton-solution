@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CircleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { DataModeBanner } from "@/components/data-mode-banner";
 import { mockParties } from "@/lib/party-data";
+import { saveInvoiceBatch } from "@/lib/supabase/invoice-batches";
 
 type BatchRow = {
   id: string;
@@ -26,6 +28,8 @@ function newRow(): BatchRow {
 export function MultiInvoiceForm({ title }: { title: string }) {
   const [rows, setRows] = useState<BatchRow[]>([newRow(), newRow()]);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const total = useMemo(
     () => rows.reduce((sum, r) => sum + r.amount, 0),
@@ -47,6 +51,25 @@ export function MultiInvoiceForm({ title }: { title: string }) {
     setSaved(false);
   }
 
+  async function handleSaveBatch() {
+    setError(null);
+    setSaving(true);
+    const { error } = await saveInvoiceBatch(
+      title,
+      rows.map((r) => ({
+        partyId: r.partyId,
+        invoiceType: r.invoiceType,
+        amount: r.amount,
+      }))
+    );
+    setSaving(false);
+    if (error) {
+      setError(error);
+      return;
+    }
+    setSaved(true);
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -62,6 +85,15 @@ export function MultiInvoiceForm({ title }: { title: string }) {
           </span>
         )}
       </div>
+
+      <DataModeBanner />
+
+      {error && (
+        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">
+          <CircleAlert size={14} />
+          {error}
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-card overflow-hidden">
         <div className="overflow-x-auto thin-scrollbar">
@@ -162,7 +194,9 @@ export function MultiInvoiceForm({ title }: { title: string }) {
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button onClick={() => setSaved(true)}>Save Batch</Button>
+        <Button onClick={handleSaveBatch} disabled={saving}>
+          {saving ? "Saving…" : "Save Batch"}
+        </Button>
       </div>
     </div>
   );

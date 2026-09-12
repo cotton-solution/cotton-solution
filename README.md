@@ -22,14 +22,19 @@ Then open http://localhost:3000
    standard crop units.
 3. Copy `.env.local.example` to `.env.local` and fill in your project's
    **Project URL** and **anon public key** (Project Settings → API).
-4. Restart `npm run dev`. The Party Master page (`/accounts-forms/party-master`)
-   will now read and write from your real Supabase database instead of the
-   in-memory demo data — you'll see a green "Connected to Supabase" banner
-   at the top of that page instead of the amber "Demo mode" one.
+4. Restart `npm run dev`. Every form in the app (Party Master, vouchers,
+   contracts, weighment slips, invoices, multi-invoice batches) will now
+   read/write your real Supabase database instead of in-memory demo data
+   — each page shows a green "Connected to Supabase" banner instead of
+   the amber "Demo mode" one.
+5. Once Supabase is connected, `/login` and `/signup` use real Supabase
+   Auth instead of the local demo login. For quick testing, you can turn
+   off "Confirm email" under Authentication → Providers → Email in the
+   Supabase dashboard so new accounts can log in immediately.
 
-Every other module still uses in-memory mock data for now (see "Still to
-come" below) — Party Master is wired first as the reference pattern;
-follow `lib/supabase/parties.ts` as the template to wire the rest.
+Until you connect Supabase, every form still works fully in demo mode —
+nothing persists between page loads, but the whole app is click-through
+end to end.
 
 ## Progress
 
@@ -134,10 +139,56 @@ follow `lib/supabase/parties.ts` as the template to wire the rest.
   or connected, plus inline error messages if a save/delete fails
 - `.env.local.example` added for the two required environment variables
 
+**Step 8: Login / Authentication** ✅
+- Restructured routing into two route groups so the login screen has no
+  sidebar: `(app)` — the full dashboard shell, now auth-protected — and
+  `(auth)` — login, sign up, forgot password with a minimal shell
+- `/login`: two-column "Account Management Portal" screen (branding +
+  feature highlights on the left, form on the right) in the site's own
+  emerald/slate theme — email, password, "Forgotten password?" link, and
+  a "Create new account" button, matching the layout you shared but
+  restyled to match this app instead of Facebook's
+- `/signup`: full name, email, password + confirm, with a "check your
+  email" screen when Supabase requires email confirmation
+- `/forgot-password`: sends a real Supabase reset email when connected
+- `AuthProvider` + `AuthGate`: every dashboard route now requires a
+  session — signed-out visitors are redirected to `/login` automatically;
+  signing in sends you back to the dashboard
+- Uses real Supabase Auth when configured; in demo mode (no env vars set)
+  any email/password combination logs you in locally so the app still
+  works end-to-end without a backend
+- Sidebar/mobile "Log Out" buttons now actually sign out and redirect to
+  `/login`; the header avatar shows your real initials instead of a
+  hardcoded "HH"
+
+**Step 9: Wire Remaining Modules to Supabase** ✅
+- All 6 vouchers, both contract types, both weighment slips, all 6
+  invoices, and all 3 Multi Invoice batches now save to Supabase when
+  configured, using the same `DataModeBanner` pattern as Party Master —
+  each form shows whether it's in demo mode or connected, and surfaces
+  any save error inline
+- New helpers: `lib/supabase/vouchers.ts` (simple vouchers + multi-line
+  Journal Vouchers), `contracts.ts`, `weighment.ts`, `invoices.ts`
+  (header + line items), `invoice-batches.ts`
+- Chart of Accounts restructured as proper `{code, name}` pairs
+  (`lib/chart-of-accounts.ts`) so Journal Voucher entries post against
+  real account codes instead of free text
+- `supabase/schema.sql` updated: party foreign keys now reference the
+  human-readable `party_id` (e.g. `6210001`) instead of an internal UUID,
+  matching what the app actually uses everywhere; added seed data for
+  the chart of accounts
+- In demo mode (no Supabase configured) every form still works exactly
+  as before — the "Saved" badge just reflects local state instead of a
+  database write
+
 **Still to come (next steps):**
-- Wire the remaining modules (vouchers, contracts, weighment, invoices,
-  reports) to Supabase the same way Party Master was wired in Step 7
-- Login/authentication (currently the app opens straight into the dashboard)
+- General ledger posting: vouchers/invoices don't yet write into the
+  `transactions` table (the actual double-entry ledger) — Trial
+  Balance/P&L/Balance Sheet reports still show static mock data rather
+  than being computed from real records
+- A reports layer that reads real Supabase data instead of the mock
+  tables in `lib/report-data.ts`
+- Party Master's Switch button (Customer ↔ Vendor view) is still cosmetic
 
 ## Tech stack
 - Next.js 14 (App Router), TypeScript
