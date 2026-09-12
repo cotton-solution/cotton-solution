@@ -10,7 +10,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace("/login");
+      router.replace("/admin/login");
     }
   }, [loading, user, router]);
 

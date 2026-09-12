@@ -17,7 +17,7 @@ export function MobileNav() {
   async function handleLogOut() {
     setOpen(false);
     await signOut();
-    router.push("/login");
+    router.push("/admin/login");
   }
 
   return (
