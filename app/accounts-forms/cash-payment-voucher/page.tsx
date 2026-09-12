@@ -1,15 +1,11 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
-import { vouchers } from "@/lib/vouchers";
+import { SimpleVoucherForm } from "@/components/simple-voucher-form";
 
 export default function Page() {
-  const item = vouchers.find(
-    (v) => v.href === "/accounts-forms/cash-payment-voucher"
-  )!;
   return (
-    <ModulePlaceholder
-      title={item.label}
-      description={item.description}
-      icon={item.icon}
+    <SimpleVoucherForm
+      title="Cash Payment Voucher"
+      voucherPrefix="CPV"
+      partyLabel="Vendor"
     />
   );
 }

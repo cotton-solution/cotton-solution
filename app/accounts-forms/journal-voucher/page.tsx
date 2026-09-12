@@ -1,15 +1,5 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
-import { vouchers } from "@/lib/vouchers";
+import { JournalVoucherForm } from "@/components/journal-voucher-form";
 
 export default function Page() {
-  const item = vouchers.find(
-    (v) => v.href === "/accounts-forms/journal-voucher"
-  )!;
-  return (
-    <ModulePlaceholder
-      title={item.label}
-      description={item.description}
-      icon={item.icon}
-    />
-  );
+  return <JournalVoucherForm />;
 }

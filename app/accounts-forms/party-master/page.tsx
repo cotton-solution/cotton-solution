@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, UserRoundPlus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, UserRoundPlus, Database, CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -17,23 +17,53 @@ import {
   type Party,
 } from "@/lib/party-data";
 import { cn } from "@/lib/utils";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import {
+  fetchPartiesFromSupabase,
+  saveParty,
+  deletePartyById,
+} from "@/lib/supabase/parties";
 
 type Mode = "view" | "creating" | "editing";
 
 export default function PartyMasterPage() {
-  const [parties, setParties] = useState<Party[]>(mockParties);
+  const [parties, setParties] = useState<Party[]>(
+    isSupabaseConfigured ? [] : mockParties
+  );
+  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(
-    mockParties[0]?.id ?? null
+    isSupabaseConfigured ? null : mockParties[0]?.id ?? null
   );
   const [mode, setMode] = useState<Mode>("view");
   const [draft, setDraft] = useState<Party>(
-    mockParties[0] ?? emptyParty(nextPartyId([]))
+    isSupabaseConfigured
+      ? emptyParty(nextPartyId([]))
+      : mockParties[0] ?? emptyParty(nextPartyId([]))
   );
   const [viewAsVendor, setViewAsVendor] = useState(false);
 
   const [townFilter, setTownFilter] = useState("--- ALL TOWNS ---");
   const [sectorFilter, setSectorFilter] = useState("--- ALL SECTORS ---");
   const [nameSearch, setNameSearch] = useState("");
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    setLoading(true);
+    fetchPartiesFromSupabase()
+      .then((rows) => {
+        if (cancelled) return;
+        setParties(rows);
+        setSelectedId(rows[0]?.id ?? null);
+        setDraft(rows[0] ?? emptyParty(nextPartyId(rows)));
+      })
+      .catch((e) => setErrorMsg(String(e)))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filteredParties = useMemo(() => {
     return parties.filter((p) => {
@@ -69,9 +99,18 @@ export default function PartyMasterPage() {
     setMode("editing");
   }
 
-  function handleRemove() {
+  async function handleRemove() {
     if (!selectedId) return;
     if (!window.confirm(`Remove party ${draft.name || draft.id}?`)) return;
+
+    if (isSupabaseConfigured) {
+      const { error } = await deletePartyById(selectedId);
+      if (error) {
+        setErrorMsg(error);
+        return;
+      }
+    }
+
     const remaining = parties.filter((p) => p.id !== selectedId);
     setParties(remaining);
     const next = remaining[0] ?? null;
@@ -80,11 +119,20 @@ export default function PartyMasterPage() {
     setMode("view");
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!draft.name.trim()) {
       window.alert("Name is required before saving.");
       return;
     }
+
+    if (isSupabaseConfigured) {
+      const { error } = await saveParty(draft);
+      if (error) {
+        setErrorMsg(error);
+        return;
+      }
+    }
+
     if (mode === "creating") {
       setParties((prev) => [...prev, draft]);
     } else {
@@ -129,6 +177,27 @@ export default function PartyMasterPage() {
           New Party
         </Button>
       </div>
+
+      <div
+        className={cn(
+          "flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2",
+          isSupabaseConfigured
+            ? "bg-emerald-50 text-emerald-700"
+            : "bg-amber-50 text-amber-700"
+        )}
+      >
+        <Database size={14} />
+        {isSupabaseConfigured
+          ? "Connected to Supabase — changes are saved to your database."
+          : "Demo mode — data is in-memory only. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local to persist data (see README)."}
+      </div>
+
+      {errorMsg && (
+        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">
+          <CircleAlert size={14} />
+          {errorMsg}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
@@ -187,7 +256,10 @@ export default function PartyMasterPage() {
             </p>
           </div>
           <div className="flex-1 overflow-y-auto thin-scrollbar divide-y divide-slate-100">
-            {filteredParties.length === 0 && (
+            {loading && (
+              <p className="p-4 text-sm text-slate-400">Loading parties…</p>
+            )}
+            {!loading && filteredParties.length === 0 && (
               <p className="p-4 text-sm text-slate-400">No parties found.</p>
             )}
             {filteredParties.map((p) => (

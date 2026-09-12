@@ -12,6 +12,25 @@ npm run dev
 
 Then open http://localhost:3000
 
+### Connecting Supabase (optional — the app works in demo mode without it)
+
+1. Create a project at https://supabase.com
+2. In the Supabase dashboard, open **SQL Editor**, paste the contents of
+   `supabase/schema.sql`, and run it. This creates every table (chart of
+   accounts, parties, vouchers, contracts, weighment slips, invoices,
+   etc.), enables Row Level Security, and seeds the 3 demo parties +
+   standard crop units.
+3. Copy `.env.local.example` to `.env.local` and fill in your project's
+   **Project URL** and **anon public key** (Project Settings → API).
+4. Restart `npm run dev`. The Party Master page (`/accounts-forms/party-master`)
+   will now read and write from your real Supabase database instead of the
+   in-memory demo data — you'll see a green "Connected to Supabase" banner
+   at the top of that page instead of the amber "Demo mode" one.
+
+Every other module still uses in-memory mock data for now (see "Still to
+come" below) — Party Master is wired first as the reference pattern;
+follow `lib/supabase/parties.ts` as the template to wire the rest.
+
 ## Progress
 
 **Step 1: Dashboard shell** ✅
@@ -84,11 +103,40 @@ Then open http://localhost:3000
   Step 4 (with brokerage %), so crop invoicing gets commission calculation
   for free
 
+**Step 6: Voucher Entry Forms** ✅
+- Reusable `SimpleVoucherForm` (configurable): powers Cash Receiving
+  Voucher, Cash Payment Voucher, Bank Cheque Deposit, Bank Cheque Issue,
+  and Cash Payment Voucher (WHT)
+  - Bank Cheque Deposit/Issue add bank account + cheque #/date fields
+  - WHT voucher adds a withholding % field that auto-computes tax
+    deducted and net payment
+- New `JournalVoucherForm`: multi-line debit/credit entry against a mock
+  chart of accounts, with a running balance check — Save is disabled and
+  a warning banner shows until total debit equals total credit
+- All 6 voucher cards on the Accounts Forms hub now open fully working
+  forms instead of placeholders
+
+**Step 7: Supabase Backend** ✅
+- `supabase/schema.sql`: full Postgres schema — chart_of_accounts,
+  parties_customers, crop_units, vouchers + voucher_lines, transactions,
+  contracts, weighment_slips, invoices + invoice_lines, invoice_batches —
+  with indexes, Row Level Security on every table, and seed data matching
+  the app's demo parties/crop units
+- `lib/supabase/client.ts`: Supabase client that's `null` until
+  `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set —
+  the app keeps running in demo mode with mock data until you connect a
+  real project (no crashes, no required setup)
+- `lib/supabase/parties.ts`: typed fetch/save/delete helpers for the
+  Party Master table, mapping between the app's `Party` type and the
+  database's snake_case columns
+- Party Master page now actually reads from and writes to Supabase when
+  configured, with a status banner showing whether you're in demo mode
+  or connected, plus inline error messages if a save/delete fails
+- `.env.local.example` added for the two required environment variables
+
 **Still to come (next steps):**
-- Accounts Forms vouchers (Cash Receiving, Cash Payment, Journal, Bank
-  Cheque Deposit/Issue, Cash Payment WHT) are still placeholders
-- Supabase schema + wiring (chart_of_accounts, parties_customers, vouchers,
-  transactions, weighment_slips, invoices) to replace in-memory mock data
+- Wire the remaining modules (vouchers, contracts, weighment, invoices,
+  reports) to Supabase the same way Party Master was wired in Step 7
 - Login/authentication (currently the app opens straight into the dashboard)
 
 ## Tech stack
