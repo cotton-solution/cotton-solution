@@ -9,31 +9,31 @@ import {
 export const navSections = [
   {
     label: "Accounts Forms",
-    href: "/admin/accounts-forms",
+    href: "/accounts-forms",
     icon: FileText,
     description: "Vouchers & party master setup",
   },
   {
     label: "Accounts Reports",
-    href: "/admin/accounts-reports",
+    href: "/accounts-reports",
     icon: BarChart3,
     description: "Ledgers, trial balance, P&L",
   },
   {
     label: "Brokerage",
-    href: "/admin/brokerage",
+    href: "/brokerage",
     icon: Handshake,
     description: "Brokerage purchase & sale invoices",
   },
   {
     label: "General",
-    href: "/admin/general",
+    href: "/general",
     icon: Settings,
     description: "General purchase & sale invoices",
   },
   {
     label: "Crops",
-    href: "/admin/crops",
+    href: "/crops",
     icon: Wheat,
     description: "Contracts, weighment & crop invoices",
   },

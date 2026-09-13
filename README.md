@@ -1,7 +1,16 @@
 # Bahar-e-Madina Commission Agent
 
-Enterprise accounting, brokerage & agricultural commission management system.
-Built with Next.js (App Router) + Tailwind CSS.
+A **multi-tenant SaaS accounting service** for cotton/wheat commission
+agents. Businesses sign up at `/signup`, each gets its own fully
+isolated set of accounts, parties, vouchers, contracts and reports —
+no business ever sees another business's data. The service owner
+manages subscriptions (yearly billing) from a separate `/admin` panel.
+Built with Next.js (App Router) + Tailwind CSS + Supabase.
+
+- **Customers** (businesses) → sign up / log in at `/signup` and `/login`.
+- **You** (service owner) → sign in at `/admin/login` to see every
+  registered business and its subscription status, and to activate /
+  renew / suspend accounts.
 
 ## One-time setup
 
@@ -12,14 +21,15 @@ npm run dev
 
 Then open http://localhost:3000
 
-### Connecting Supabase (optional — the app works in demo mode without it)
+### Connecting Supabase (required for real multi-tenant use — the app works in single-user demo mode without it)
 
 1. Create a project at https://supabase.com
 2. In the Supabase dashboard, open **SQL Editor**, paste the contents of
-   `supabase/schema.sql`, and run it. This creates every table (chart of
-   accounts, parties, vouchers, contracts, weighment slips, invoices,
-   etc.), enables Row Level Security, and seeds the 3 demo parties +
-   standard crop units.
+   `supabase/schema.sql`, and run it. This creates every table (businesses,
+   chart of accounts, parties, vouchers, contracts, weighment slips,
+   invoices, etc.), enables Row Level Security scoped per business, and
+   sets up the triggers that automatically create and seed a new
+   business the moment someone signs up.
 3. Copy `.env.local.example` to `.env.local` and fill in your project's
    **Project URL** and **anon public key** (Project Settings → API).
 4. Restart `npm run dev`. Every form in the app (Party Master, vouchers,
@@ -31,10 +41,23 @@ Then open http://localhost:3000
    Auth instead of the local demo login. For quick testing, you can turn
    off "Confirm email" under Authentication → Providers → Email in the
    Supabase dashboard so new accounts can log in immediately.
+6. When someone signs up at `/signup` (with a Business/Company name),
+   a Postgres trigger automatically creates their isolated "business"
+   row, seeded with a default chart of accounts and standard crop units
+   (Cotton @ 40 KGS, Wheat @ 37.324 KGS/Maund) — they never see any
+   other business's data, enforced by Row Level Security, not just app
+   code.
+7. **Becoming an admin** (to use `/admin`): sign up once for a normal
+   account, find your user id in the SQL editor
+   (`select id from auth.users where email = '...'`), then run
+   `insert into admin_users (id, email) values ('<uuid>', 'you@x.com');`.
+   Now `/admin/login` with that email/password gets you into the
+   service-owner panel.
 
 Until you connect Supabase, every form still works fully in demo mode —
-nothing persists between page loads, but the whole app is click-through
-end to end.
+nothing persists between page loads, the whole app is click-through
+end to end, and `/admin` isn't usable (there's no real database to
+check who's an admin against).
 
 ## Progress
 
@@ -181,6 +204,36 @@ end to end.
   as before — the "Saved" badge just reflects local state instead of a
   database write
 
+**Step 10: Multi-tenant SaaS + Service Admin Panel** ✅
+- New `businesses` table (tenant record: name, contact info, plan,
+  subscription status, expiry date) — one row per signed-up company
+- Every data table (chart of accounts, parties, crop units, vouchers,
+  transactions, contracts, weighment slips, invoices, invoice batches)
+  now carries a `business_id`, defaulted automatically to the caller's
+  own business
+- Row Level Security rewritten so a signed-in user can only ever
+  read/write rows belonging to their own business — enforced in
+  Postgres, not just in the app
+- Signing up now asks for a **Business / Company name**; a Postgres
+  trigger creates that business automatically and seeds it with its
+  own default chart of accounts + standard crop units, so every new
+  customer starts with a clean, working setup
+- `businesses.subscription_status` (`trial` / `active` / `expired` /
+  `suspended`) + `subscription_expires_at` model the yearly billing —
+  a `BusinessGate` blocks the dashboard with a renewal notice if a
+  business's subscription has expired or been suspended
+- A trigger (`protect_subscription_fields`) stops customers from
+  granting themselves an active subscription directly — only an admin
+  update can change plan/status/expiry
+- New **`/admin`** section, completely separate from the customer app:
+  `/admin/login` (checks membership in a new `admin_users` table, not
+  just a valid login) and `/admin` — a dashboard listing every
+  registered business with its plan, status and expiry, plus
+  one-click "Activate +1yr", "Suspend" and "Reinstate" actions
+- `lib/supabase/businesses.ts`: typed helpers for fetching your own
+  business, fetching all businesses (admin), and updating a business's
+  subscription (admin)
+
 **Still to come (next steps):**
 - General ledger posting: vouchers/invoices don't yet write into the
   `transactions` table (the actual double-entry ledger) — Trial
@@ -194,4 +247,4 @@ end to end.
 - Next.js 14 (App Router), TypeScript
 - Tailwind CSS
 - lucide-react icons
-- Supabase (Postgres) — to be added in a later step
+- Supabase (Postgres, Auth, Row Level Security) — multi-tenant backend

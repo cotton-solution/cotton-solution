@@ -14,7 +14,7 @@ export function Sidebar() {
 
   async function handleLogOut() {
     await signOut();
-    router.push("/admin/login");
+    router.push("/login");
   }
 
   return (

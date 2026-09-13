@@ -88,7 +88,7 @@ export async function saveParty(party: Party): Promise<{ error: string | null }>
   if (!supabase) return { error: "Supabase is not configured." };
   const { error } = await supabase
     .from("parties_customers")
-    .upsert(partyToRow(party), { onConflict: "party_id" });
+    .upsert(partyToRow(party), { onConflict: "business_id,party_id" });
 
   return { error: error?.message ?? null };
 }

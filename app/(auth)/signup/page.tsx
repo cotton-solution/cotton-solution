@@ -15,6 +15,7 @@ export default function SignUpPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -36,7 +37,7 @@ export default function SignUpPage() {
     }
 
     setSubmitting(true);
-    const result = await signUp(email, password, name);
+    const result = await signUp(email, password, name, businessName);
     setSubmitting(false);
 
     if (result.error) {
@@ -89,6 +90,18 @@ export default function SignUpPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="business-name">Business / Company name</Label>
+          <Input
+            id="business-name"
+            required
+            autoComplete="organization"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+            placeholder="e.g. Al-Barkat Cotton Factory"
           />
         </div>
 
