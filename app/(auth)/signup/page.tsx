@@ -7,8 +7,10 @@ import { CircleAlert, CheckCircle2 } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
+import { BUSINESS_TYPES, type BusinessType } from "@/lib/business-types";
 
 export default function SignUpPage() {
   const { signUp } = useAuth();
@@ -16,6 +18,7 @@ export default function SignUpPage() {
 
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [businessType, setBusinessType] = useState<BusinessType>("shopkeeper");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -37,7 +40,7 @@ export default function SignUpPage() {
     }
 
     setSubmitting(true);
-    const result = await signUp(email, password, name, businessName);
+    const result = await signUp(email, password, name, businessName, businessType);
     setSubmitting(false);
 
     if (result.error) {
@@ -103,6 +106,25 @@ export default function SignUpPage() {
             onChange={(e) => setBusinessName(e.target.value)}
             placeholder="e.g. Al-Barkat Cotton Factory"
           />
+        </div>
+
+        <div>
+          <Label htmlFor="business-type">Business Category</Label>
+          <Select
+            id="business-type"
+            required
+            value={businessType}
+            onChange={(e) => setBusinessType(e.target.value as BusinessType)}
+          >
+            {BUSINESS_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-slate-500 mt-1">
+            Your account and data are kept separate per category.
+          </p>
         </div>
 
         <div>
