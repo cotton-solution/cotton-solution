@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase/client";
+import type { BusinessType } from "@/lib/business-types";
 
 export type SubscriptionStatus = "trial" | "active" | "expired" | "suspended";
+export type BillingStatus = "billed" | "unbilled";
 
 export type Business = {
   id: string;
@@ -10,6 +12,8 @@ export type Business = {
   plan: string;
   subscriptionStatus: SubscriptionStatus;
   subscriptionExpiresAt: string | null;
+  businessType: BusinessType;
+  billingStatus: BillingStatus;
   createdAt: string;
 };
 
@@ -21,6 +25,8 @@ type BusinessRow = {
   plan: string;
   subscription_status: SubscriptionStatus;
   subscription_expires_at: string | null;
+  business_type: BusinessType;
+  billing_status: BillingStatus;
   created_at: string;
 };
 
@@ -33,12 +39,14 @@ function rowToBusiness(row: BusinessRow): Business {
     plan: row.plan,
     subscriptionStatus: row.subscription_status,
     subscriptionExpiresAt: row.subscription_expires_at,
+    businessType: row.business_type ?? "shopkeeper",
+    billingStatus: row.billing_status ?? "unbilled",
     createdAt: row.created_at,
   };
 }
 
 const BUSINESS_COLUMNS =
-  "id, name, contact_email, contact_phone, plan, subscription_status, subscription_expires_at, created_at";
+  "id, name, contact_email, contact_phone, plan, subscription_status, subscription_expires_at, business_type, billing_status, created_at";
 
 /** The signed-in customer's own business (tenant) record, or null. */
 export async function fetchMyBusiness(): Promise<Business | null> {
@@ -59,7 +67,8 @@ export async function fetchMyBusiness(): Promise<Business | null> {
  */
 export async function createBusinessForCurrentUser(
   name: string,
-  contactEmail: string
+  contactEmail: string,
+  businessType: BusinessType = "shopkeeper"
 ): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
   const {
@@ -71,6 +80,7 @@ export async function createBusinessForCurrentUser(
     owner_id: user.id,
     name,
     contact_email: contactEmail,
+    business_type: businessType,
   });
 
   // Unique violation just means the business already exists — fine.
@@ -92,19 +102,31 @@ export async function fetchAllBusinesses(): Promise<Business[]> {
   return (data as BusinessRow[]).map(rowToBusiness);
 }
 
-/** Admin-only: change a business's plan / subscription status / expiry. */
+/** Admin-only: change any editable field on a business (account) record. */
 export async function updateBusinessSubscription(
   businessId: string,
   updates: {
+    name?: string;
+    contactEmail?: string | null;
+    contactPhone?: string | null;
     plan?: string;
     subscriptionStatus?: SubscriptionStatus;
     subscriptionExpiresAt?: string | null;
+    businessType?: BusinessType;
+    billingStatus?: BillingStatus;
   }
 ): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
   const { error } = await supabase
     .from("businesses")
     .update({
+      ...(updates.name !== undefined ? { name: updates.name } : {}),
+      ...(updates.contactEmail !== undefined
+        ? { contact_email: updates.contactEmail }
+        : {}),
+      ...(updates.contactPhone !== undefined
+        ? { contact_phone: updates.contactPhone }
+        : {}),
       ...(updates.plan !== undefined ? { plan: updates.plan } : {}),
       ...(updates.subscriptionStatus !== undefined
         ? { subscription_status: updates.subscriptionStatus }
@@ -112,9 +134,24 @@ export async function updateBusinessSubscription(
       ...(updates.subscriptionExpiresAt !== undefined
         ? { subscription_expires_at: updates.subscriptionExpiresAt }
         : {}),
+      ...(updates.businessType !== undefined
+        ? { business_type: updates.businessType }
+        : {}),
+      ...(updates.billingStatus !== undefined
+        ? { billing_status: updates.billingStatus }
+        : {}),
     })
     .eq("id", businessId);
 
+  return { error: error?.message ?? null };
+}
+
+/** Admin-only: permanently remove a business account and all its data. */
+export async function deleteBusiness(
+  businessId: string
+): Promise<{ error: string | null }> {
+  if (!supabase) return { error: "Supabase is not configured." };
+  const { error } = await supabase.from("businesses").delete().eq("id", businessId);
   return { error: error?.message ?? null };
 }
 

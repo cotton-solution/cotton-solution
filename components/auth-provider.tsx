@@ -20,7 +20,8 @@ type AuthContextValue = {
     email: string,
     password: string,
     name: string,
-    businessName: string
+    businessName: string,
+    businessType: string
   ) => Promise<{ error: string | null; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
@@ -97,15 +98,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string,
       password: string,
       name: string,
-      businessName: string
+      businessName: string,
+      businessType: string
     ) => {
       if (isSupabaseConfigured && supabase) {
-        // business_name flows into a Postgres trigger (see schema.sql)
-        // that creates this signup's isolated "business" (tenant) row.
+        // business_name / business_type flow into a Postgres trigger (see
+        // schema.sql) that creates this signup's isolated "business"
+        // (tenant) row, already tagged with its category.
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name, business_name: businessName } },
+          options: {
+            data: {
+              full_name: name,
+              business_name: businessName,
+              business_type: businessType,
+            },
+          },
         });
         const needsEmailConfirmation = !data.session && !error;
         return { error: error?.message ?? null, needsEmailConfirmation };
