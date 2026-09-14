@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CircleAlert, ShieldCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { checkIsAdmin } from "@/lib/supabase/businesses";
@@ -110,9 +111,8 @@ function AdminLoginForm() {
               <Label htmlFor="admin-password" className="text-slate-300">
                 Password
               </Label>
-              <Input
+              <PasswordInput
                 id="admin-password"
-                type="password"
                 required
                 autoComplete="current-password"
                 value={password}

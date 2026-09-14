@@ -7,6 +7,7 @@ import { CircleAlert, CheckCircle2 } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 
@@ -141,9 +142,8 @@ export default function SignUpPage() {
 
         <div>
           <Label htmlFor="signup-password">Password</Label>
-          <Input
+          <PasswordInput
             id="signup-password"
-            type="password"
             required
             autoComplete="new-password"
             value={password}
@@ -154,9 +154,8 @@ export default function SignUpPage() {
 
         <div>
           <Label htmlFor="confirm-password">Confirm password</Label>
-          <Input
+          <PasswordInput
             id="confirm-password"
-            type="password"
             required
             autoComplete="new-password"
             value={confirmPassword}
