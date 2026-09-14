@@ -996,6 +996,7 @@ function LoginPageSettingsTab() {
   const [tagline, setTagline] = useState(settings.tagline);
   const [savingBrand, setSavingBrand] = useState(false);
   const [brandSaved, setBrandSaved] = useState(false);
+  const [brandError, setBrandError] = useState<string | null>(null);
 
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -1025,9 +1026,17 @@ function LoginPageSettingsTab() {
   async function handleSaveBrand() {
     setSavingBrand(true);
     setBrandSaved(false);
-    await updateSiteSettings({ siteName: siteName.trim(), tagline: tagline.trim() });
+    setBrandError(null);
+    const { error } = await updateSiteSettings({
+      siteName: siteName.trim(),
+      tagline: tagline.trim(),
+    });
     await refresh();
     setSavingBrand(false);
+    if (error) {
+      setBrandError(error);
+      return;
+    }
     setBrandSaved(true);
     setTimeout(() => setBrandSaved(false), 2000);
   }
@@ -1044,16 +1053,19 @@ function LoginPageSettingsTab() {
       setUploadingLogo(false);
       return;
     }
-    await updateSiteSettings({ logoUrl: url });
+    const { error: saveError } = await updateSiteSettings({ logoUrl: url });
     await refresh();
     setUploadingLogo(false);
+    if (saveError) setLogoError(saveError);
   }
 
   async function handleRemoveLogo() {
     setRemovingLogo(true);
-    await updateSiteSettings({ logoUrl: null });
+    setLogoError(null);
+    const { error } = await updateSiteSettings({ logoUrl: null });
     await refresh();
     setRemovingLogo(false);
+    if (error) setLogoError(error);
   }
 
   async function handleAddSlide(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1173,6 +1185,7 @@ function LoginPageSettingsTab() {
               </span>
             )}
           </div>
+          {brandError && <p className="text-xs text-red-600">{brandError}</p>}
         </div>
       </SettingsCard>
 
