@@ -4,6 +4,7 @@ import { MobileNav } from "@/components/mobile-nav";
 import { LiveClock } from "@/components/live-clock";
 import { useAuth } from "@/components/auth-provider";
 import { useBusiness } from "@/components/business-provider";
+import { useSiteSettings } from "@/components/site-settings-provider";
 
 function getInitials(name?: string, email?: string) {
   if (name?.trim()) {
@@ -17,6 +18,7 @@ function getInitials(name?: string, email?: string) {
 export function Header() {
   const { user } = useAuth();
   const { business } = useBusiness();
+  const { settings } = useSiteSettings();
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-slate-200 bg-white/95 backdrop-blur px-4 sm:px-6 flex items-center justify-between gap-4">
@@ -24,7 +26,7 @@ export function Header() {
         <MobileNav />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900 truncate">
-            {business?.name ?? "Bahar-e-Madina Commission Agent"}
+            {business?.name ?? `${settings.siteName} Commission Agent`}
           </p>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span className="rounded bg-brand-50 text-brand-700 px-1.5 py-0.5 font-medium">

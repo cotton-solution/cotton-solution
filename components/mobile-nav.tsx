@@ -7,12 +7,14 @@ import { Menu, X, LogOut, Power, Sprout } from "lucide-react";
 import { navSections } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
+import { useSiteSettings } from "@/components/site-settings-provider";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
+  const { settings } = useSiteSettings();
 
   async function handleLogOut() {
     setOpen(false);
@@ -40,12 +42,21 @@ export function MobileNav() {
           <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-xl flex flex-col animate-in slide-in-from-left">
             <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-                  <Sprout size={18} />
-                </div>
+                {settings.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={settings.logoUrl}
+                    alt={settings.siteName}
+                    className="h-9 w-9 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
+                    <Sprout size={18} />
+                  </div>
+                )}
                 <div className="leading-tight">
                   <p className="text-sm font-semibold text-slate-900">
-                    Bahar-e-Madina
+                    {settings.siteName}
                   </p>
                   <p className="text-xs text-slate-500">Commission Agent</p>
                 </div>
