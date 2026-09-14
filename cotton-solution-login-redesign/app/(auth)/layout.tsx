@@ -5,8 +5,6 @@ import { AuthProvider } from "@/components/auth-provider";
 import { SiteSettingsProvider } from "@/components/site-settings-provider";
 import { fetchSiteSettings } from "@/lib/supabase/site-settings";
 
-// Scoped to the (auth) route group only — login, signup, forgot-password.
-// Does not touch the main app/admin layouts or their fonts.
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -28,7 +26,7 @@ export default function AuthRootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>
+      <body className="font-sans">
         <SiteSettingsProvider>
           <AuthProvider>{children}</AuthProvider>
         </SiteSettingsProvider>
