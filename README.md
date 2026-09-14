@@ -234,6 +234,34 @@ check who's an admin against).
   business, fetching all businesses (admin), and updating a business's
   subscription (admin)
 
+**Step 11: Account categories, approval workflow & Billing panel** ✅
+- Sign up now also asks for a **Business category**: Shopkeeper,
+  Wholesaler, Distributor, Trader, or Manufacturer — stored on the
+  business record and shown throughout `/admin`
+- New signups now start as a **New Account Request** (pending) and
+  cannot use the dashboard until an admin approves them — `BusinessGate`
+  shows a "waiting for approval" screen instead of blocking only on
+  expired/suspended
+- `/admin` sidebar reorganized into a real menu:
+  **Dashboard** (overview stats) → **Accounts** (New Account Requests /
+  Active Accounts / Expired Accounts) → **Billing** (Billed Accounts /
+  Unbilled Accounts) → **Logout**
+- Every account row has **View**, **Edit**, and **Delete** — View shows
+  full details, Edit updates name/category/contact info, Delete
+  permanently removes the business and cascades to all of its data
+  (parties, vouchers, invoices, everything)
+- New Account Requests get an **Approve** button (grants a year of
+  access); Expired Accounts get **Renew +1yr**; Active Accounts get
+  **Suspend**/**Reinstate**
+- New independent `billing_status` (`billed` / `unbilled`) tracks
+  whether this year's invoice has been collected, separate from
+  subscription status — **Mark Billed** / **Mark Unbilled** buttons
+  move accounts between the two Billing tabs
+- If you already ran the old `schema.sql` on a live Supabase project,
+  run **`supabase/migration_2_categories_billing.sql`** once in the SQL
+  editor to add the new columns/policies without touching existing data
+  (a fresh project can just run the updated `schema.sql` directly)
+
 **Still to come (next steps):**
 - General ledger posting: vouchers/invoices don't yet write into the
   `transactions` table (the actual double-entry ledger) — Trial
