@@ -18,43 +18,22 @@ create table if not exists businesses (
   name text not null,
   contact_email text,
   contact_phone text,
+  business_category text check (
+    business_category in (
+      'shopkeeper', 'wholesaler', 'distributor', 'trader', 'manufacturer'
+    )
+  ),
   plan text not null default 'standard',
   subscription_status text not null default 'trial' check (
     subscription_status in ('trial', 'active', 'expired', 'suspended')
   ),
   subscription_expires_at date,
-  -- The category the business picked at sign-up. Each category runs as
-  -- its own independent account (Shopkeeper / Wholesaler / Distributor /
-  -- Trader / Manufacturer) — used to badge & filter the Accounts screens.
-  business_type text not null default 'shopkeeper' check (
-    business_type in ('shopkeeper', 'wholesaler', 'distributor', 'trader', 'manufacturer')
-  ),
-  -- Whether this billing cycle has been invoiced yet — drives the
-  -- Billing → Billed / Unbilled admin screens.
   billing_status text not null default 'unbilled' check (
     billing_status in ('billed', 'unbilled')
   ),
+  last_billed_at timestamptz,
   created_at timestamptz not null default now()
 );
-
--- Safe to re-run on a database created before these columns existed.
-alter table businesses add column if not exists business_type text not null default 'shopkeeper';
-alter table businesses add column if not exists billing_status text not null default 'unbilled';
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'businesses_business_type_check'
-  ) then
-    alter table businesses add constraint businesses_business_type_check
-      check (business_type in ('shopkeeper', 'wholesaler', 'distributor', 'trader', 'manufacturer'));
-  end if;
-  if not exists (
-    select 1 from pg_constraint where conname = 'businesses_billing_status_check'
-  ) then
-    alter table businesses add constraint businesses_billing_status_check
-      check (billing_status in ('billed', 'unbilled'));
-  end if;
-end $$;
 
 create unique index if not exists idx_businesses_owner on businesses(owner_id);
 
@@ -103,6 +82,8 @@ begin
     new.subscription_status := old.subscription_status;
     new.subscription_expires_at := old.subscription_expires_at;
     new.plan := old.plan;
+    new.billing_status := old.billing_status;
+    new.last_billed_at := old.last_billed_at;
   end if;
   return new;
 end;
@@ -153,7 +134,7 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into businesses (owner_id, name, contact_email, business_type)
+  insert into businesses (owner_id, name, contact_email, business_category)
   values (
     new.id,
     coalesce(
@@ -161,7 +142,7 @@ begin
       split_part(new.email, '@', 1)
     ),
     new.email,
-    coalesce(nullif(new.raw_user_meta_data->>'business_type', ''), 'shopkeeper')
+    nullif(new.raw_user_meta_data->>'business_category', '')
   )
   on conflict (owner_id) do nothing;
   return new;
@@ -412,6 +393,10 @@ create policy "Owner or admin can update business" on businesses
   for update using (owner_id = auth.uid() or is_admin())
   with check (owner_id = auth.uid() or is_admin());
 
+drop policy if exists "Admin can delete business" on businesses;
+create policy "Admin can delete business" on businesses
+  for delete using (is_admin());
+
 -- ---- admin_users: only admins can read; managed via SQL editor ----
 alter table admin_users enable row level security;
 
@@ -484,102 +469,6 @@ create policy "Tenant isolation via batch" on invoice_batch_lines
       select id from invoice_batches where business_id = my_business_id() or is_admin()
     )
   );
-
--- ============================================================
--- MARKETING SITE CMS — driven from Admin → Web Settings / Contact /
--- Pages. Single shared set of rows (not per-tenant); only admins can
--- write, anyone (including anonymous visitors) can read, since this
--- feeds the public marketing site.
--- ============================================================
-
-create table if not exists site_settings (
-  id boolean primary key default true check (id), -- singleton row
-  website_name text not null default 'My Company',
-  logo_url text,
-  hero_image_url text,
-  main_heading text,
-  sub_heading text,
-  updated_at timestamptz not null default now()
-);
-insert into site_settings (id) values (true) on conflict (id) do nothing;
-
-create table if not exists hero_slides (
-  id uuid primary key default gen_random_uuid(),
-  image_url text not null,
-  caption text,
-  sort_order integer not null default 0,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists contact_persons (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  designation text,
-  phone text,
-  email text,
-  photo_url text,
-  sort_order integer not null default 0,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists contact_messages (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  email text,
-  phone text,
-  message text not null,
-  is_read boolean not null default false,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists page_content (
-  slug text primary key check (
-    slug in ('about-us', 'privacy-policy', 'disclaimer', 'terms-conditions')
-  ),
-  title text not null,
-  content text not null default '',
-  updated_at timestamptz not null default now()
-);
-insert into page_content (slug, title) values
-  ('about-us', 'About Us'),
-  ('privacy-policy', 'Privacy Policy'),
-  ('disclaimer', 'Disclaimer'),
-  ('terms-conditions', 'Terms & Conditions')
-on conflict (slug) do nothing;
-
-alter table site_settings enable row level security;
-drop policy if exists "Anyone can view site settings" on site_settings;
-create policy "Anyone can view site settings" on site_settings for select using (true);
-drop policy if exists "Admins can update site settings" on site_settings;
-create policy "Admins can update site settings" on site_settings for update using (is_admin());
-
-alter table hero_slides enable row level security;
-drop policy if exists "Anyone can view hero slides" on hero_slides;
-create policy "Anyone can view hero slides" on hero_slides for select using (true);
-drop policy if exists "Admins manage hero slides" on hero_slides;
-create policy "Admins manage hero slides" on hero_slides for all using (is_admin()) with check (is_admin());
-
-alter table contact_persons enable row level security;
-drop policy if exists "Anyone can view contact persons" on contact_persons;
-create policy "Anyone can view contact persons" on contact_persons for select using (true);
-drop policy if exists "Admins manage contact persons" on contact_persons;
-create policy "Admins manage contact persons" on contact_persons for all using (is_admin()) with check (is_admin());
-
-alter table contact_messages enable row level security;
-drop policy if exists "Anyone can send a contact message" on contact_messages;
-create policy "Anyone can send a contact message" on contact_messages for insert with check (true);
-drop policy if exists "Admins can view/manage contact messages" on contact_messages;
-create policy "Admins can view/manage contact messages" on contact_messages for select using (is_admin());
-drop policy if exists "Admins can update contact messages" on contact_messages;
-create policy "Admins can update contact messages" on contact_messages for update using (is_admin());
-drop policy if exists "Admins can delete contact messages" on contact_messages;
-create policy "Admins can delete contact messages" on contact_messages for delete using (is_admin());
-
-alter table page_content enable row level security;
-drop policy if exists "Anyone can view page content" on page_content;
-create policy "Anyone can view page content" on page_content for select using (true);
-drop policy if exists "Admins manage page content" on page_content;
-create policy "Admins manage page content" on page_content for update using (is_admin());
 
 -- ============================================================
 -- Becoming an admin (service owner)

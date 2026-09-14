@@ -7,10 +7,8 @@ import { CircleAlert, CheckCircle2 } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
-import { BUSINESS_TYPES, type BusinessType } from "@/lib/business-types";
 
 export default function SignUpPage() {
   const { signUp } = useAuth();
@@ -18,7 +16,7 @@ export default function SignUpPage() {
 
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [businessType, setBusinessType] = useState<BusinessType>("shopkeeper");
+  const [businessCategory, setBusinessCategory] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -40,7 +38,7 @@ export default function SignUpPage() {
     }
 
     setSubmitting(true);
-    const result = await signUp(email, password, name, businessName, businessType);
+    const result = await signUp(email, password, name, businessName, businessCategory);
     setSubmitting(false);
 
     if (result.error) {
@@ -109,22 +107,23 @@ export default function SignUpPage() {
         </div>
 
         <div>
-          <Label htmlFor="business-type">Business Category</Label>
-          <Select
-            id="business-type"
+          <Label htmlFor="business-category">Business category</Label>
+          <select
+            id="business-category"
             required
-            value={businessType}
-            onChange={(e) => setBusinessType(e.target.value as BusinessType)}
+            value={businessCategory}
+            onChange={(e) => setBusinessCategory(e.target.value)}
+            className="w-full h-10 sm:h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-brand-600 focus:ring-1 focus:ring-brand-600"
           >
-            {BUSINESS_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </Select>
-          <p className="text-xs text-slate-500 mt-1">
-            Your account and data are kept separate per category.
-          </p>
+            <option value="" disabled>
+              Select a category…
+            </option>
+            <option value="shopkeeper">Shopkeeper</option>
+            <option value="wholesaler">Wholesaler</option>
+            <option value="distributor">Distributor</option>
+            <option value="trader">Trader</option>
+            <option value="manufacturer">Manufacturer</option>
+          </select>
         </div>
 
         <div>
