@@ -10,12 +10,14 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
+import { useSiteSettings } from "@/components/site-settings-provider";
 import { isSupabaseConfigured, setRememberMe } from "@/lib/supabase/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
   const { signIn } = useAuth();
+  const { settings } = useSiteSettings();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -59,7 +61,7 @@ export default function LoginPage() {
       title="Welcome back"
       subtitle={
         isSupabaseConfigured
-          ? "Sign in to your Bahar-e-Madina account."
+          ? `Sign in to your ${settings.siteName} account.`
           : "Demo mode — any email & password will sign you in."
       }
     >

@@ -1,110 +1,182 @@
 import { supabase } from "@/lib/supabase/client";
 
+export const DEFAULT_SITE_NAME = "Bahar-e-Madina";
+export const DEFAULT_TAGLINE = "Run your commission business with confidence.";
+
 export type SiteSettings = {
-  websiteName: string;
   logoUrl: string | null;
-  heroImageUrl: string | null;
-  mainHeading: string | null;
-  subHeading: string | null;
+  siteName: string;
+  tagline: string;
+};
+
+export const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  logoUrl: null,
+  siteName: DEFAULT_SITE_NAME,
+  tagline: DEFAULT_TAGLINE,
+};
+
+export type SiteSlide = {
+  id: string;
+  imageUrl: string;
+  title: string | null;
+  caption: string | null;
+  sortOrder: number;
+  createdAt: string;
 };
 
 type SiteSettingsRow = {
-  website_name: string;
   logo_url: string | null;
-  hero_image_url: string | null;
-  main_heading: string | null;
-  sub_heading: string | null;
+  site_name: string;
+  tagline: string;
 };
 
-const DEFAULT_SETTINGS: SiteSettings = {
-  websiteName: "My Company",
-  logoUrl: null,
-  heroImageUrl: null,
-  mainHeading: null,
-  subHeading: null,
+type SiteSlideRow = {
+  id: string;
+  image_url: string;
+  title: string | null;
+  caption: string | null;
+  sort_order: number;
+  created_at: string;
 };
 
-function rowToSettings(row: SiteSettingsRow): SiteSettings {
+function rowToSlide(row: SiteSlideRow): SiteSlide {
   return {
-    websiteName: row.website_name,
-    logoUrl: row.logo_url,
-    heroImageUrl: row.hero_image_url,
-    mainHeading: row.main_heading,
-    subHeading: row.sub_heading,
+    id: row.id,
+    imageUrl: row.image_url,
+    title: row.title,
+    caption: row.caption,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
   };
 }
 
+/** Public: the site-wide branding (logo, name, tagline). Falls back to
+ *  the built-in defaults if Supabase isn't connected yet. */
 export async function fetchSiteSettings(): Promise<SiteSettings> {
-  if (!supabase) return DEFAULT_SETTINGS;
+  if (!supabase) return DEFAULT_SITE_SETTINGS;
+
   const { data, error } = await supabase
     .from("site_settings")
-    .select("website_name, logo_url, hero_image_url, main_heading, sub_heading")
-    .eq("id", true)
+    .select("logo_url, site_name, tagline")
     .maybeSingle();
-  if (error || !data) return DEFAULT_SETTINGS;
-  return rowToSettings(data as SiteSettingsRow);
+
+  if (error || !data) return DEFAULT_SITE_SETTINGS;
+
+  const row = data as SiteSettingsRow;
+  return {
+    logoUrl: row.logo_url,
+    siteName: row.site_name || DEFAULT_SITE_NAME,
+    tagline: row.tagline || DEFAULT_TAGLINE,
+  };
 }
 
-export async function updateSiteSettings(
-  updates: Partial<SiteSettings>
-): Promise<{ error: string | null }> {
+/** Admin-only: update the site-wide branding. */
+export async function updateSiteSettings(updates: {
+  logoUrl?: string | null;
+  siteName?: string;
+  tagline?: string;
+}): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
+
   const { error } = await supabase
     .from("site_settings")
     .update({
-      ...(updates.websiteName !== undefined ? { website_name: updates.websiteName } : {}),
       ...(updates.logoUrl !== undefined ? { logo_url: updates.logoUrl } : {}),
-      ...(updates.heroImageUrl !== undefined ? { hero_image_url: updates.heroImageUrl } : {}),
-      ...(updates.mainHeading !== undefined ? { main_heading: updates.mainHeading } : {}),
-      ...(updates.subHeading !== undefined ? { sub_heading: updates.subHeading } : {}),
+      ...(updates.siteName !== undefined ? { site_name: updates.siteName } : {}),
+      ...(updates.tagline !== undefined ? { tagline: updates.tagline } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", true);
+
   return { error: error?.message ?? null };
 }
 
-export type HeroSlide = {
-  id: string;
-  imageUrl: string;
-  caption: string | null;
-  sortOrder: number;
-};
-
-type HeroSlideRow = {
-  id: string;
-  image_url: string;
-  caption: string | null;
-  sort_order: number;
-};
-
-function rowToSlide(row: HeroSlideRow): HeroSlide {
-  return { id: row.id, imageUrl: row.image_url, caption: row.caption, sortOrder: row.sort_order };
-}
-
-export async function fetchHeroSlides(): Promise<HeroSlide[]> {
+/** Public: the login-page slides, in display order. */
+export async function fetchSiteSlides(): Promise<SiteSlide[]> {
   if (!supabase) return [];
+
   const { data, error } = await supabase
-    .from("hero_slides")
-    .select("id, image_url, caption, sort_order")
-    .order("sort_order", { ascending: true });
+    .from("site_slides")
+    .select("id, image_url, title, caption, sort_order, created_at")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
   if (error || !data) return [];
-  return (data as HeroSlideRow[]).map(rowToSlide);
+  return (data as SiteSlideRow[]).map(rowToSlide);
 }
 
-export async function addHeroSlide(
+/** Admin-only: add a new slide. */
+export async function addSiteSlide(
   imageUrl: string,
-  caption: string,
-  sortOrder: number
+  title?: string | null,
+  caption?: string | null
 ): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
+
+  const { data, error } = await supabase
+    .from("site_slides")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextOrder = error || !data ? 0 : (data as { sort_order: number }).sort_order + 1;
+
+  const { error: insertError } = await supabase.from("site_slides").insert({
+    image_url: imageUrl,
+    title: title || null,
+    caption: caption || null,
+    sort_order: nextOrder,
+  });
+
+  return { error: insertError?.message ?? null };
+}
+
+/** Admin-only: edit a slide's image, title and/or caption. */
+export async function updateSiteSlide(
+  id: string,
+  updates: { imageUrl?: string; title?: string | null; caption?: string | null }
+): Promise<{ error: string | null }> {
+  if (!supabase) return { error: "Supabase is not configured." };
+
   const { error } = await supabase
-    .from("hero_slides")
-    .insert({ image_url: imageUrl, caption, sort_order: sortOrder });
+    .from("site_slides")
+    .update({
+      ...(updates.imageUrl !== undefined ? { image_url: updates.imageUrl } : {}),
+      ...(updates.title !== undefined ? { title: updates.title } : {}),
+      ...(updates.caption !== undefined ? { caption: updates.caption } : {}),
+    })
+    .eq("id", id);
+
   return { error: error?.message ?? null };
 }
 
-export async function deleteHeroSlide(id: string): Promise<{ error: string | null }> {
+/** Admin-only: remove a slide. */
+export async function deleteSiteSlide(id: string): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
-  const { error } = await supabase.from("hero_slides").delete().eq("id", id);
+  const { error } = await supabase.from("site_slides").delete().eq("id", id);
   return { error: error?.message ?? null };
+}
+
+/**
+ * Admin-only: upload an image (logo or slide) to the public
+ * "site-assets" storage bucket and return its public URL.
+ */
+export async function uploadSiteImage(
+  file: File,
+  folder: "logo" | "slides"
+): Promise<{ url: string | null; error: string | null }> {
+  if (!supabase) return { url: null, error: "Supabase is not configured." };
+
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("site-assets")
+    .upload(path, file, { cacheControl: "3600", upsert: false });
+
+  if (uploadError) return { url: null, error: uploadError.message };
+
+  const { data } = supabase.storage.from("site-assets").getPublicUrl(path);
+  return { url: data.publicUrl, error: null };
 }

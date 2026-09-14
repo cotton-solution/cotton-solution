@@ -22,12 +22,18 @@ import {
   Receipt,
   CircleDollarSign,
   X,
+  Globe,
+  ImagePlus,
+  ImageOff,
+  Loader2,
 } from "lucide-react";
 import { AdminAuthGate } from "@/components/admin-auth-gate";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth-provider";
+import { useSiteSettings } from "@/components/site-settings-provider";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   fetchAllBusinesses,
   updateBusinessSubscription,
@@ -39,6 +45,14 @@ import {
   type BusinessCategory,
   type SubscriptionStatus,
 } from "@/lib/supabase/businesses";
+import {
+  updateSiteSettings,
+  uploadSiteImage,
+  addSiteSlide,
+  updateSiteSlide,
+  deleteSiteSlide,
+  type SiteSlide,
+} from "@/lib/supabase/site-settings";
 
 type View =
   | "dashboard"
@@ -46,7 +60,8 @@ type View =
   | "accounts-active"
   | "accounts-expired"
   | "billing-billed"
-  | "billing-unbilled";
+  | "billing-unbilled"
+  | "website-settings";
 
 const STATUS_STYLES: Record<SubscriptionStatus, string> = {
   trial: "bg-amber-50 text-amber-700",
@@ -75,6 +90,7 @@ function categoryLabel(c: BusinessCategory | null): string {
 // Dashboard (overview stats)
 // ============================================================
 function DashboardView({ businesses }: { businesses: Business[] }) {
+  const { settings } = useSiteSettings();
   const counts = businesses.reduce(
     (acc, b) => {
       acc[b.subscriptionStatus] = (acc[b.subscriptionStatus] ?? 0) + 1;
@@ -89,7 +105,7 @@ function DashboardView({ businesses }: { businesses: Business[] }) {
       <div className="rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 text-white p-6">
         <p className="text-lg font-semibold">Welcome, Admin!</p>
         <p className="text-emerald-50/90 text-sm mt-1">
-          Bahar-e-Madina Commission Agent
+          {settings.siteName} Commission Agent
         </p>
         <p className="text-emerald-100/60 text-xs mt-0.5">
           Service Owner Panel · Subscriptions &amp; Billing
@@ -531,6 +547,7 @@ function EditBusinessModal({
 // ============================================================
 function AdminDashboard() {
   const { signOut } = useAuth();
+  const { settings } = useSiteSettings();
   const router = useRouter();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -637,6 +654,7 @@ function AdminDashboard() {
     "accounts-expired": "Expired Accounts",
     "billing-billed": "Billed Accounts",
     "billing-unbilled": "Unbilled Accounts",
+    "website-settings": "Website Setting",
   };
 
   return (
@@ -648,7 +666,7 @@ function AdminDashboard() {
             <ShieldCheck size={16} />
           </div>
           <div className="leading-tight">
-            <p className="text-sm font-semibold">Bahar-e-Madina</p>
+            <p className="text-sm font-semibold">{settings.siteName}</p>
             <p className="text-[11px] text-emerald-200/70">Service Admin</p>
           </div>
         </div>
@@ -706,6 +724,13 @@ function AdminDashboard() {
               onClick={() => setView("billing-unbilled")}
             />
           </SidebarGroup>
+
+          <SidebarLink
+            icon={<Globe size={16} />}
+            label="Website Setting"
+            active={view === "website-settings"}
+            onClick={() => setView("website-settings")}
+          />
         </nav>
 
         <div className="p-3 border-t border-white/10">
@@ -814,6 +839,8 @@ function AdminDashboard() {
                   showBillingColumn
                 />
               )}
+
+              {view === "website-settings" && <WebsiteSettingsView />}
             </>
           )}
         </main>
@@ -913,6 +940,454 @@ function SidebarSubLink({
         </span>
       )}
     </button>
+  );
+}
+
+// ============================================================
+// Website Setting (branding + login page)
+// ============================================================
+function WebsiteSettingsView() {
+  const [tab, setTab] = useState<"login-page">("login-page");
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-1 border-b border-slate-200">
+        <button
+          onClick={() => setTab("login-page")}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === "login-page"
+              ? "border-brand-600 text-brand-700"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Login Page
+        </button>
+      </div>
+
+      {tab === "login-page" && <LoginPageSettingsTab />}
+    </div>
+  );
+}
+
+function SettingsCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-5">
+      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      {description && (
+        <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+      )}
+      <div className="mt-4">{children}</div>
+    </div>
+  );
+}
+
+function LoginPageSettingsTab() {
+  const { settings, slides, refresh } = useSiteSettings();
+
+  const [siteName, setSiteName] = useState(settings.siteName);
+  const [tagline, setTagline] = useState(settings.tagline);
+  const [savingBrand, setSavingBrand] = useState(false);
+  const [brandSaved, setBrandSaved] = useState(false);
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [removingLogo, setRemovingLogo] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+
+  const [uploadingSlide, setUploadingSlide] = useState(false);
+  const [slideError, setSlideError] = useState<string | null>(null);
+  const [viewingSlide, setViewingSlide] = useState<SiteSlide | null>(null);
+  const [editingSlide, setEditingSlide] = useState<SiteSlide | null>(null);
+  const [deletingSlideId, setDeletingSlideId] = useState<string | null>(null);
+
+  // Keep the text fields in sync whenever fresh settings load in.
+  useEffect(() => {
+    setSiteName(settings.siteName);
+    setTagline(settings.tagline);
+  }, [settings.siteName, settings.tagline]);
+
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-sm px-4 py-3">
+        Connect Supabase first (see README) — website settings need a real
+        database to store the logo, name, tagline and slides.
+      </div>
+    );
+  }
+
+  async function handleSaveBrand() {
+    setSavingBrand(true);
+    setBrandSaved(false);
+    await updateSiteSettings({ siteName: siteName.trim(), tagline: tagline.trim() });
+    await refresh();
+    setSavingBrand(false);
+    setBrandSaved(true);
+    setTimeout(() => setBrandSaved(false), 2000);
+  }
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setLogoError(null);
+    setUploadingLogo(true);
+    const { url, error } = await uploadSiteImage(file, "logo");
+    if (error || !url) {
+      setLogoError(error ?? "Upload failed.");
+      setUploadingLogo(false);
+      return;
+    }
+    await updateSiteSettings({ logoUrl: url });
+    await refresh();
+    setUploadingLogo(false);
+  }
+
+  async function handleRemoveLogo() {
+    setRemovingLogo(true);
+    await updateSiteSettings({ logoUrl: null });
+    await refresh();
+    setRemovingLogo(false);
+  }
+
+  async function handleAddSlide(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setSlideError(null);
+    setUploadingSlide(true);
+    const { url, error } = await uploadSiteImage(file, "slides");
+    if (error || !url) {
+      setSlideError(error ?? "Upload failed.");
+      setUploadingSlide(false);
+      return;
+    }
+    await addSiteSlide(url);
+    await refresh();
+    setUploadingSlide(false);
+  }
+
+  async function handleDeleteSlide(slide: SiteSlide) {
+    if (!window.confirm("Delete this slide? This can't be undone.")) return;
+    setDeletingSlideId(slide.id);
+    await deleteSiteSlide(slide.id);
+    await refresh();
+    setDeletingSlideId(null);
+  }
+
+  return (
+    <div className="space-y-5">
+      <SettingsCard
+        title="Logo"
+        description="Shown on the login, sign-up and admin screens."
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+            {settings.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={settings.logoUrl}
+                alt={settings.siteName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <ImageOff size={20} className="text-slate-300" />
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 h-9 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer">
+                {uploadingLogo ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <ImagePlus size={14} />
+                )}
+                {uploadingLogo ? "Uploading…" : "Upload logo"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoChange}
+                  disabled={uploadingLogo}
+                />
+              </label>
+              {settings.logoUrl && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-9 px-3"
+                  onClick={handleRemoveLogo}
+                  disabled={removingLogo}
+                >
+                  {removingLogo ? "Removing…" : "Remove"}
+                </Button>
+              )}
+            </div>
+            {logoError && <p className="text-xs text-red-600">{logoError}</p>}
+            <p className="text-[11px] text-slate-400">PNG or SVG, square works best.</p>
+          </div>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        title="Website name & tagline"
+        description="The name replaces every hardcoded mention across the site; the tagline appears on the login screen."
+      >
+        <div className="space-y-3.5 max-w-md">
+          <div>
+            <Label htmlFor="site-name">Website name</Label>
+            <Input
+              id="site-name"
+              value={siteName}
+              onChange={(e) => setSiteName(e.target.value)}
+              placeholder="Bahar-e-Madina"
+            />
+          </div>
+          <div>
+            <Label htmlFor="site-tagline">Tagline</Label>
+            <Input
+              id="site-tagline"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              placeholder="Run your commission business with confidence."
+            />
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <Button
+              type="button"
+              onClick={handleSaveBrand}
+              disabled={savingBrand || !siteName.trim()}
+            >
+              {savingBrand ? "Saving…" : "Save changes"}
+            </Button>
+            {brandSaved && (
+              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                <CheckCircle2 size={14} />
+                Saved
+              </span>
+            )}
+          </div>
+        </div>
+      </SettingsCard>
+
+      <SettingsCard
+        title="Login page slides"
+        description="Rotating images shown on the left panel of the login screen."
+      >
+        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 h-9 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer">
+          {uploadingSlide ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <ImagePlus size={14} />
+          )}
+          {uploadingSlide ? "Uploading…" : "Add slide"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAddSlide}
+            disabled={uploadingSlide}
+          />
+        </label>
+        {slideError && <p className="text-xs text-red-600 mt-2">{slideError}</p>}
+
+        {slides.length === 0 ? (
+          <p className="text-sm text-slate-400 mt-4">
+            No slides added yet — the login page will show the default feature
+            highlights until you add one.
+          </p>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {slides.map((slide) => (
+              <div
+                key={slide.id}
+                className="rounded-xl border border-slate-200 overflow-hidden bg-white"
+              >
+                <div className="h-28 bg-slate-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={slide.imageUrl}
+                    alt={slide.title ?? ""}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="p-3">
+                  <p className="text-sm font-medium text-slate-900 truncate">
+                    {slide.title || "Untitled slide"}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {slide.caption || "No caption"}
+                  </p>
+                  <div className="flex items-center gap-1 mt-2.5">
+                    <button
+                      onClick={() => setViewingSlide(slide)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                      title="View"
+                    >
+                      <Eye size={15} />
+                    </button>
+                    <button
+                      onClick={() => setEditingSlide(slide)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                      title="Edit"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSlide(slide)}
+                      disabled={deletingSlideId === slide.id}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-50"
+                      title="Delete"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsCard>
+
+      {viewingSlide && (
+        <Modal title={viewingSlide.title || "Slide preview"} onClose={() => setViewingSlide(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={viewingSlide.imageUrl}
+            alt={viewingSlide.title ?? ""}
+            className="w-full rounded-lg object-cover"
+          />
+          {viewingSlide.caption && (
+            <p className="text-sm text-slate-600 mt-3">{viewingSlide.caption}</p>
+          )}
+        </Modal>
+      )}
+
+      {editingSlide && (
+        <EditSlideModal
+          slide={editingSlide}
+          onClose={() => setEditingSlide(null)}
+          onSaved={() => {
+            setEditingSlide(null);
+            refresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditSlideModal({
+  slide,
+  onClose,
+  onSaved,
+}: {
+  slide: SiteSlide;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(slide.title ?? "");
+  const [caption, setCaption] = useState(slide.caption ?? "");
+  const [imageUrl, setImageUrl] = useState(slide.imageUrl);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleReplaceImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    const { url, error: uploadError } = await uploadSiteImage(file, "slides");
+    if (uploadError || !url) {
+      setError(uploadError ?? "Upload failed.");
+      setUploading(false);
+      return;
+    }
+    setImageUrl(url);
+    setUploading(false);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    await updateSiteSlide(slide.id, {
+      title: title.trim() || null,
+      caption: caption.trim() || null,
+      imageUrl,
+    });
+    setSaving(false);
+    onSaved();
+  }
+
+  return (
+    <Modal title="Edit slide" onClose={onClose}>
+      <div className="space-y-3.5">
+        <div className="h-32 rounded-lg overflow-hidden bg-slate-100">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        </div>
+        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 h-9 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer">
+          {uploading ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <ImagePlus size={14} />
+          )}
+          {uploading ? "Uploading…" : "Replace image"}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleReplaceImage}
+            disabled={uploading}
+          />
+        </label>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+
+        <div>
+          <Label htmlFor="slide-title">Title (optional)</Label>
+          <Input
+            id="slide-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="slide-caption">Caption (optional)</Label>
+          <Input
+            id="slide-caption"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+          />
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1"
+            onClick={onClose}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            className="flex-1"
+            onClick={handleSave}
+            disabled={saving || uploading}
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

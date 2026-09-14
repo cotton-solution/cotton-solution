@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import "../globals.css";
 import { AuthProvider } from "@/components/auth-provider";
+import { SiteSettingsProvider } from "@/components/site-settings-provider";
+import { fetchSiteSettings } from "@/lib/supabase/site-settings";
 
-export const metadata: Metadata = {
-  title: "Bahar-e-Madina — Service Admin",
-  description: "Manage registered businesses and subscriptions",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { siteName } = await fetchSiteSettings();
+  return {
+    title: `${siteName} — Service Admin`,
+    description: "Manage registered businesses and subscriptions",
+  };
+}
 
 export default function AdminRootLayout({
   children,
@@ -15,7 +20,9 @@ export default function AdminRootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <SiteSettingsProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </SiteSettingsProvider>
       </body>
     </html>
   );

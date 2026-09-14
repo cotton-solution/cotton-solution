@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
+import { useSiteSettings } from "@/components/site-settings-provider";
 import { checkIsAdmin } from "@/lib/supabase/businesses";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
@@ -21,6 +22,7 @@ export default function AdminLoginPage() {
 
 function AdminLoginForm() {
   const { signIn, signOut } = useAuth();
+  const { settings } = useSiteSettings();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -68,11 +70,20 @@ function AdminLoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 justify-center mb-8">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-emerald-400">
-            <ShieldCheck size={18} />
-          </div>
+          {settings.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={settings.logoUrl}
+              alt={settings.siteName}
+              className="h-9 w-9 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-emerald-400">
+              <ShieldCheck size={18} />
+            </div>
+          )}
           <span className="font-semibold text-white">
-            Bahar-e-Madina — Service Admin
+            {settings.siteName} — Service Admin
           </span>
         </div>
 
