@@ -4,9 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, LogOut, Power, Sprout } from "lucide-react";
-import { navSections } from "@/lib/nav";
+import { modulesForCategory } from "@/lib/modules";
+import { BUSINESS_CATEGORY_LABELS } from "@/lib/supabase/businesses";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
+import { useBusiness } from "@/components/business-provider";
 import { useSiteSettings } from "@/components/site-settings-provider";
 
 export function MobileNav() {
@@ -14,7 +16,14 @@ export function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
+  const { business } = useBusiness();
   const { settings } = useSiteSettings();
+
+  // Same category-based module list as the desktop sidebar.
+  const items = modulesForCategory(business?.category);
+  const categoryLabel = business?.category
+    ? BUSINESS_CATEGORY_LABELS[business.category]
+    : null;
 
   async function handleLogOut() {
     setOpen(false);
@@ -26,6 +35,7 @@ export function MobileNav() {
     <>
       <button
         aria-label="Open navigation menu"
+        aria-expanded={open}
         onClick={() => setOpen(true)}
         className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
       >
@@ -41,7 +51,7 @@ export function MobileNav() {
           />
           <div className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-xl flex flex-col animate-in slide-in-from-left">
             <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 {settings.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -54,11 +64,13 @@ export function MobileNav() {
                     <Sprout size={18} />
                   </div>
                 )}
-                <div className="leading-tight">
-                  <p className="text-sm font-semibold text-slate-900">
+                <div className="leading-tight min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">
                     {settings.siteName}
                   </p>
-                  <p className="text-xs text-slate-500">Commission Agent</p>
+                  <p className="text-xs text-slate-500">
+                    {categoryLabel ?? "Commission Agent"}
+                  </p>
                 </div>
               </div>
               <button
@@ -71,7 +83,7 @@ export function MobileNav() {
             </div>
 
             <nav className="flex-1 overflow-y-auto thin-scrollbar px-3 py-4 space-y-1">
-              {navSections.map((item) => {
+              {items.map((item) => {
                 const active = pathname?.startsWith(item.href);
                 const Icon = item.icon;
                 return (
@@ -79,6 +91,7 @@ export function MobileNav() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setOpen(false)}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium",
                       active

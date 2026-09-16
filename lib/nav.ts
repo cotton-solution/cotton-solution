@@ -1,40 +1,19 @@
-import {
-  FileText,
-  BarChart3,
-  Handshake,
-  Settings,
-  Wheat,
-} from "lucide-react";
+/**
+ * Navigation is now derived from the module registry so that a
+ * customer only ever sees the modules their business category
+ * is entitled to. See lib/modules.ts for the category mapping.
+ *
+ * `navSections` is kept as the full, unfiltered list for backwards
+ * compatibility with anything that still imports it.
+ */
+export {
+  MODULES as navSections,
+  MODULES,
+  CATEGORY_MODULES,
+  modulesForCategory,
+  moduleKeysForCategory,
+  canAccessModule,
+  moduleKeyFromPath,
+} from "@/lib/modules";
 
-export const navSections = [
-  {
-    label: "Accounts Forms",
-    href: "/accounts-forms",
-    icon: FileText,
-    description: "Vouchers & party master setup",
-  },
-  {
-    label: "Accounts Reports",
-    href: "/accounts-reports",
-    icon: BarChart3,
-    description: "Ledgers, trial balance, P&L",
-  },
-  {
-    label: "Brokerage",
-    href: "/brokerage",
-    icon: Handshake,
-    description: "Brokerage purchase & sale invoices",
-  },
-  {
-    label: "General",
-    href: "/general",
-    icon: Settings,
-    description: "General purchase & sale invoices",
-  },
-  {
-    label: "Crops",
-    href: "/crops",
-    icon: Wheat,
-    description: "Contracts, weighment & crop invoices",
-  },
-] as const;
+export type { AppModule, ModuleKey } from "@/lib/modules";

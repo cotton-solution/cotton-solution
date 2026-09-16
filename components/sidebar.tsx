@@ -3,16 +3,25 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Power, Sprout } from "lucide-react";
-import { navSections } from "@/lib/nav";
+import { modulesForCategory } from "@/lib/modules";
+import { BUSINESS_CATEGORY_LABELS } from "@/lib/supabase/businesses";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
+import { useBusiness } from "@/components/business-provider";
 import { useSiteSettings } from "@/components/site-settings-provider";
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
+  const { business } = useBusiness();
   const { settings } = useSiteSettings();
+
+  // Only the modules this customer's business category is entitled to.
+  const items = modulesForCategory(business?.category);
+  const categoryLabel = business?.category
+    ? BUSINESS_CATEGORY_LABELS[business.category]
+    : null;
 
   async function handleLogOut() {
     await signOut();
@@ -34,22 +43,25 @@ export function Sidebar() {
             <Sprout size={18} />
           </div>
         )}
-        <div className="leading-tight">
-          <p className="text-sm font-semibold text-slate-900">
+        <div className="leading-tight min-w-0">
+          <p className="text-sm font-semibold text-slate-900 truncate">
             {settings.siteName}
           </p>
-          <p className="text-xs text-slate-500">Commission Agent</p>
+          <p className="text-xs text-slate-500">
+            {categoryLabel ?? "Commission Agent"}
+          </p>
         </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto thin-scrollbar px-3 py-4 space-y-1">
-        {navSections.map((item) => {
+        {items.map((item) => {
           const active = pathname?.startsWith(item.href);
           const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 active
