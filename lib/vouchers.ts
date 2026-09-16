@@ -6,6 +6,7 @@ import {
   ArrowRightLeft,
   Receipt,
   Users,
+  ListTree,
 } from "lucide-react";
 
 export const vouchers = [
@@ -53,3 +54,12 @@ export const partyMasterCard = {
   icon: Users,
   description: "Add, edit, and manage customer and party profiles",
 } as const;
+
+export const chartOfAccountsCard = {
+  label: "Chart of Accounts",
+  href: "/accounts-forms/chart-of-accounts",
+  icon: ListTree,
+  description: "Create and organize the accounts used across the business",
+} as const;
+
+export const masterSetupCards = [partyMasterCard, chartOfAccountsCard] as const;

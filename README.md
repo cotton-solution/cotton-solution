@@ -262,6 +262,28 @@ check who's an admin against).
   editor to add the new columns/policies without touching existing data
   (a fresh project can just run the updated `schema.sql` directly)
 
+**Step: Chart of Accounts management** ✅
+- Full Chart of Accounts page at `/accounts-forms/chart-of-accounts`,
+  added next to Party Master under Accounts Forms → Master Setup
+  - Filters: Account Type, Name search, "show inactive" toggle
+  - Scrollable existing-accounts list (left) with type + active/inactive
+    badges
+  - Account form (right): Code, Type (Asset/Liability/Equity/
+    Income/Expense), Name, Parent Account (for sub-accounts), Active toggle
+  - Code auto-suggested from the account type's numbering block
+    (1=Asset, 2=Liability, 3=Equity, 4=Income, 5=Expense) when creating —
+    editable before saving; locked once the account exists so codes
+    already used on vouchers/reports never change under you
+  - New / Edit / Remove / Save / Close actions; Remove is blocked if the
+    account still has sub-accounts under it
+  - Wired to `chart_of_accounts` (already in `schema.sql`, auto-seeded
+    per business) with an in-memory demo fallback, same pattern as Party
+    Master
+  - If you already ran the old `schema.sql`, run
+    **`supabase/migration_4_chart_of_accounts.sql`** once in the SQL
+    editor to add the `is_active`/`updated_at` columns this screen needs
+    (a fresh project can just run the updated `schema.sql` directly)
+
 **Still to come (next steps):**
 - General ledger posting: vouchers/invoices don't yet write into the
   `transactions` table (the actual double-entry ledger) — Trial
