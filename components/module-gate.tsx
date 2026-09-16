@@ -3,23 +3,34 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
-import { moduleKeyFromPath, canAccessModule } from "@/lib/modules";
+import { moduleKeyFromPath, canAccessModuleForUser } from "@/lib/modules";
+import { effectiveModuleKeys } from "@/lib/team-data";
 import { useBusiness } from "@/components/business-provider";
 import { Button } from "@/components/ui/button";
 
 /**
  * Hides a module from customers whose business category is not
- * entitled to it — including when they type the URL directly.
- * Runs inside the app layout, after BusinessGate, so `business`
- * is already loaded by the time this renders.
+ * entitled to it, and from staff logins whose assigned role doesn't
+ * include it — including when they type the URL directly. Runs inside
+ * the app layout, after BusinessGate, so `business` is already loaded
+ * by the time this renders.
  */
 export function ModuleGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const { business, loading } = useBusiness();
+  const { business, isOwner, membership, loading } = useBusiness();
 
   const moduleKey = moduleKeyFromPath(pathname);
-  const allowed = moduleKey ? canAccessModule(business?.category, moduleKey) : true;
+  const allowed = moduleKey
+    ? canAccessModuleForUser(
+        business?.category,
+        {
+          isOwner,
+          moduleKeys: membership ? effectiveModuleKeys(membership) : [],
+        },
+        moduleKey
+      )
+    : true;
 
   useEffect(() => {
     if (!loading && moduleKey && !allowed) {

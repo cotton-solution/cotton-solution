@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Power, Sprout } from "lucide-react";
-import { modulesForCategory } from "@/lib/modules";
+import { modulesForUser } from "@/lib/modules";
+import { effectiveModuleKeys } from "@/lib/team-data";
 import { BUSINESS_CATEGORY_LABELS } from "@/lib/supabase/businesses";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
@@ -14,11 +15,15 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
-  const { business } = useBusiness();
+  const { business, isOwner, membership } = useBusiness();
   const { settings } = useSiteSettings();
 
-  // Only the modules this customer's business category is entitled to.
-  const items = modulesForCategory(business?.category);
+  // The business category's modules, narrowed further by this signed-in
+  // user's role if they're a staff login rather than the owner.
+  const items = modulesForUser(business?.category, {
+    isOwner,
+    moduleKeys: membership ? effectiveModuleKeys(membership) : [],
+  });
   const categoryLabel = business?.category
     ? BUSINESS_CATEGORY_LABELS[business.category]
     : null;

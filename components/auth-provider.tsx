@@ -10,7 +10,7 @@ import {
 } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 
-export type AuthUser = { email: string; name?: string } | null;
+export type AuthUser = { id?: string; email: string; name?: string } | null;
 
 type AuthContextValue = {
   user: AuthUser;
@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(
           sessionUser
             ? {
+                id: sessionUser.id,
                 email: sessionUser.email ?? "",
                 name: sessionUser.user_metadata?.full_name,
               }
@@ -57,7 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const u = session?.user;
             setUser(
               u
-                ? { email: u.email ?? "", name: u.user_metadata?.full_name }
+                ? {
+                    id: u.id,
+                    email: u.email ?? "",
+                    name: u.user_metadata?.full_name,
+                  }
                 : null
             );
           }
