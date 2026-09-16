@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { vouchers, partyMasterCard } from "@/lib/vouchers";
+import { vouchers, masterSetupCards } from "@/lib/vouchers";
 
 export default function AccountsFormsPage() {
   return (
@@ -50,28 +50,33 @@ export default function AccountsFormsPage() {
         <h2 className="text-sm font-semibold text-slate-700 mb-3">
           Master Setup
         </h2>
-        <Link
-          href={partyMasterCard.href}
-          className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-card hover:border-brand-600/40 transition-colors max-w-md"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <partyMasterCard.icon size={20} />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">
-                {partyMasterCard.label}
-              </h3>
-              <p className="mt-0.5 text-xs text-slate-500">
-                {partyMasterCard.description}
-              </p>
-            </div>
-          </div>
-          <ArrowRight
-            size={16}
-            className="text-slate-300 group-hover:text-brand-600 transition-colors shrink-0 ml-3"
-          />
-        </Link>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+          {masterSetupCards.map((card) => (
+            <Link
+              key={card.href}
+              href={card.href}
+              className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-card hover:border-brand-600/40 transition-colors"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                  <card.icon size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {card.label}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {card.description}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight
+                size={16}
+                className="text-slate-300 group-hover:text-brand-600 transition-colors shrink-0 ml-3"
+              />
+            </Link>
+          ))}
+        </div>
       </section>
     </div>
   );
