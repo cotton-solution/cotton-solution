@@ -14,6 +14,9 @@ export {
   moduleKeysForCategory,
   canAccessModule,
   moduleKeyFromPath,
+  visibleModuleKeys,
+  modulesForUser,
+  canAccessModuleForUser,
 } from "@/lib/modules";
 
-export type { AppModule, ModuleKey } from "@/lib/modules";
+export type { AppModule, ModuleKey, ModuleAccess } from "@/lib/modules";

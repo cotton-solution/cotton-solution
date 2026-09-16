@@ -19,6 +19,7 @@ export const BUSINESS_CATEGORY_LABELS: Record<BusinessCategory, string> = {
 
 export type Business = {
   id: string;
+  ownerId: string;
   name: string;
   contactEmail: string | null;
   contactPhone: string | null;
@@ -33,6 +34,7 @@ export type Business = {
 
 type BusinessRow = {
   id: string;
+  owner_id: string;
   name: string;
   contact_email: string | null;
   contact_phone: string | null;
@@ -48,6 +50,7 @@ type BusinessRow = {
 function rowToBusiness(row: BusinessRow): Business {
   return {
     id: row.id,
+    ownerId: row.owner_id,
     name: row.name,
     contactEmail: row.contact_email,
     contactPhone: row.contact_phone,
@@ -62,7 +65,7 @@ function rowToBusiness(row: BusinessRow): Business {
 }
 
 const BUSINESS_COLUMNS =
-  "id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at";
+  "id, owner_id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at";
 
 /** The signed-in customer's own business (tenant) record, or null. */
 export async function fetchMyBusiness(): Promise<Business | null> {

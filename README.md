@@ -284,6 +284,36 @@ check who's an admin against).
     editor to add the `is_active`/`updated_at` columns this screen needs
     (a fresh project can just run the updated `schema.sql` directly)
 
+**Step: User Access & Security** ✅
+- New "User Access" module (sidebar + dashboard card), visible to the
+  business owner and to any staff login given the Admin role
+- `/user-access`: add a team member (name, email, role), see everyone
+  who's been added, change anyone's role, and Deactivate/Reactivate a
+  login without deleting it
+- Roles: **Admin** (everything, including User Access), **Accountant**
+  (Accounts Forms + Reports), **Trader** (Trader + Reports), **Viewer**
+  (Reports only), **Custom** (owner hand-picks exactly which modules)
+- The sidebar, mobile nav, dashboard cards and route guard all now
+  narrow themselves to a staff login's assigned modules — a Trader
+  role never sees Brokerage even if the business category includes it
+- Creating a login needs the Supabase **service role** key, which must
+  stay server-only — see `SUPABASE_SERVICE_ROLE_KEY` in
+  `.env.local.example` and `app/api/team/invite/route.ts`. Only the
+  business owner can add/manage team members
+- A brand-new temporary password is shown once right after adding
+  someone — share it with them and have them change it after they log
+  in (there's no email/SMTP step required for this to work)
+- If you already ran an older `schema.sql`, run
+  **`supabase/migration_5_team_access.sql`** once in the SQL editor (a
+  fresh project can just run the updated `schema.sql` directly)
+- **Known limitation:** access control here is enforced at the UI/route
+  level (what a staff login can navigate to), not yet at the database
+  row level per module — every login on a business can still read/write
+  the same tenant data a Supabase RLS tenant boundary already isolates
+  by business. Fine for trusted staff; if you need e.g. a Viewer who
+  truly cannot submit vouchers even via a direct API call, that needs
+  follow-up RLS work per table
+
 **Still to come (next steps):**
 - General ledger posting: vouchers/invoices don't yet write into the
   `transactions` table (the actual double-entry ledger) — Trial

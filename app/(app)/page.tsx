@@ -2,15 +2,20 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { modulesForCategory } from "@/lib/modules";
+import { modulesForUser } from "@/lib/modules";
+import { effectiveModuleKeys } from "@/lib/team-data";
 import { BUSINESS_CATEGORY_LABELS } from "@/lib/supabase/businesses";
 import { useBusiness } from "@/components/business-provider";
 
 export default function DashboardPage() {
-  const { business } = useBusiness();
+  const { business, isOwner, membership } = useBusiness();
 
-  // Dashboard cards mirror the sidebar: only entitled modules.
-  const items = modulesForCategory(business?.category);
+  // Dashboard cards mirror the sidebar: only entitled modules, further
+  // narrowed by role for a staff login.
+  const items = modulesForUser(business?.category, {
+    isOwner,
+    moduleKeys: membership ? effectiveModuleKeys(membership) : [],
+  });
   const categoryLabel = business?.category
     ? BUSINESS_CATEGORY_LABELS[business.category]
     : null;

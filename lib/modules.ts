@@ -5,6 +5,7 @@ import {
   Settings,
   Wheat,
   CandlestickChart,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 import type { BusinessCategory } from "@/lib/supabase/businesses";
@@ -29,7 +30,8 @@ export type ModuleKey =
   | "brokerage"
   | "general"
   | "crops"
-  | "trader";
+  | "trader"
+  | "user-access";
 
 export type AppModule = {
   key: ModuleKey;
@@ -82,6 +84,13 @@ export const MODULES: readonly AppModule[] = [
     icon: CandlestickChart,
     description: "Rates, positions, buy/sell & profit-loss",
   },
+  {
+    key: "user-access",
+    label: "User Access",
+    href: "/user-access",
+    icon: UserCog,
+    description: "Add staff logins and control which modules they can open",
+  },
 ] as const;
 
 /**
@@ -89,9 +98,21 @@ export const MODULES: readonly AppModule[] = [
  * Edit this map to change what a category can see.
  */
 export const CATEGORY_MODULES: Record<BusinessCategory, ModuleKey[]> = {
-  shopkeeper: ["accounts-forms", "accounts-reports", "general"],
-  wholesaler: ["accounts-forms", "accounts-reports", "general", "brokerage"],
-  distributor: ["accounts-forms", "accounts-reports", "general", "brokerage"],
+  shopkeeper: ["accounts-forms", "accounts-reports", "general", "user-access"],
+  wholesaler: [
+    "accounts-forms",
+    "accounts-reports",
+    "general",
+    "brokerage",
+    "user-access",
+  ],
+  distributor: [
+    "accounts-forms",
+    "accounts-reports",
+    "general",
+    "brokerage",
+    "user-access",
+  ],
   trader: [
     "accounts-forms",
     "accounts-reports",
@@ -99,12 +120,14 @@ export const CATEGORY_MODULES: Record<BusinessCategory, ModuleKey[]> = {
     "brokerage",
     "crops",
     "trader",
+    "user-access",
   ],
   manufacturer: [
     "accounts-forms",
     "accounts-reports",
     "general",
     "crops",
+    "user-access",
   ],
 };
 
@@ -117,6 +140,7 @@ const LEGACY_FALLBACK_MODULES: ModuleKey[] = [
   "brokerage",
   "general",
   "crops",
+  "user-access",
 ];
 
 /** The module keys allowed for a category (null = legacy account). */
@@ -149,4 +173,49 @@ export function moduleKeyFromPath(pathname: string): ModuleKey | null {
     (m) => pathname === m.href || pathname.startsWith(`${m.href}/`)
   );
   return match?.key ?? null;
+}
+
+/**
+ * ------------------------------------------------------------
+ * Per-user access (User Access & Security)
+ * ------------------------------------------------------------
+ * The business owner always sees every module their category
+ * allows. A staff login (business_members row) only sees the
+ * intersection of the category's modules and whatever the owner
+ * assigned them — so giving someone the "Trader" role never shows
+ * them Brokerage even if the business category includes it.
+ */
+export type ModuleAccess = {
+  isOwner: boolean;
+  /** Modules assigned to this person. Ignored when isOwner is true. */
+  moduleKeys: ModuleKey[];
+} | null;
+
+/** The module keys a specific signed-in user is allowed to see. */
+export function visibleModuleKeys(
+  category: BusinessCategory | null | undefined,
+  access: ModuleAccess
+): ModuleKey[] {
+  const categoryKeys = moduleKeysForCategory(category);
+  if (!access || access.isOwner) return categoryKeys;
+  const allowed = new Set(access.moduleKeys);
+  return categoryKeys.filter((k) => allowed.has(k));
+}
+
+/** The full module objects a specific signed-in user is allowed to see. */
+export function modulesForUser(
+  category: BusinessCategory | null | undefined,
+  access: ModuleAccess
+): AppModule[] {
+  const allowed = new Set(visibleModuleKeys(category, access));
+  return MODULES.filter((m) => allowed.has(m.key));
+}
+
+/** True if this specific signed-in user may open the given module. */
+export function canAccessModuleForUser(
+  category: BusinessCategory | null | undefined,
+  access: ModuleAccess,
+  key: ModuleKey
+): boolean {
+  return visibleModuleKeys(category, access).includes(key);
 }

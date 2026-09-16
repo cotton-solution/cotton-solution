@@ -49,6 +49,11 @@ create table if not exists admin_users (
 -- ------------------------------------------------------------
 -- Helper functions used throughout RLS policies below
 -- ------------------------------------------------------------
+-- Resolves to the caller's business whether they're the owner, or a
+-- staff login added from the User Access screen (business_members,
+-- defined further down). Every tenant table filters on
+-- business_id = my_business_id(), so this one function is the only
+-- place that needs to know about both kinds of access.
 create or replace function my_business_id()
 returns uuid
 language sql
@@ -56,7 +61,21 @@ stable
 security definer
 set search_path = public
 as $$
-  select id from businesses where owner_id = auth.uid() limit 1;
+  select coalesce(
+    (select id from businesses where owner_id = auth.uid() limit 1),
+    (select business_id from business_members
+       where user_id = auth.uid() and is_active limit 1)
+  );
+$$;
+
+create or replace function is_business_owner()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from businesses where owner_id = auth.uid());
 $$;
 
 create or replace function is_admin()
@@ -134,6 +153,13 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Staff logins created from the User Access screen carry this flag
+  -- in their metadata so they get a business_members row instead of
+  -- a brand-new business of their own.
+  if coalesce((new.raw_user_meta_data->>'skip_business_creation')::boolean, false) then
+    return new;
+  end if;
+
   insert into businesses (owner_id, name, contact_email, business_category)
   values (
     new.id,
@@ -204,6 +230,30 @@ create table if not exists parties_customers (
   updated_at timestamptz not null default now(),
   unique (business_id, party_id)
 );
+
+-- ------------------------------------------------------------
+-- Staff logins (User Access & Security) — one row per person the
+-- business owner has invited, besides themselves.
+-- ------------------------------------------------------------
+create table if not exists business_members (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references businesses(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  email text not null,
+  name text,
+  role text not null check (
+    role in ('admin', 'accountant', 'trader', 'viewer', 'custom')
+  ),
+  -- Only used when role = 'custom'; built-in roles get their modules
+  -- from a fixed map in the app (lib/team-data.ts).
+  module_keys text[] not null default '{}',
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (business_id, user_id)
+);
+
+create index if not exists idx_business_members_business on business_members(business_id);
+create index if not exists idx_business_members_user on business_members(user_id);
 
 -- ------------------------------------------------------------
 -- Standard Crop Units (e.g. Cotton @ 40 KGS / Maund) — per business
@@ -381,8 +431,18 @@ create index if not exists idx_parties_business on parties_customers(business_id
 alter table businesses enable row level security;
 
 drop policy if exists "Owner or admin can view business" on businesses;
-create policy "Owner or admin can view business" on businesses
-  for select using (owner_id = auth.uid() or is_admin());
+drop policy if exists "Owner, member or admin can view business" on businesses;
+create policy "Owner, member or admin can view business" on businesses
+  for select using (
+    owner_id = auth.uid()
+    or is_admin()
+    or exists (
+      select 1 from business_members m
+      where m.business_id = businesses.id
+        and m.user_id = auth.uid()
+        and m.is_active
+    )
+  );
 
 drop policy if exists "Owner can create own business" on businesses;
 create policy "Owner can create own business" on businesses
@@ -426,6 +486,26 @@ begin
     );
   end loop;
 end $$;
+
+-- ---- business_members: NOT part of the generic loop above — only the
+-- owner (or a support admin) may manage the member list, and a staff
+-- login may only ever read their own row (never each other's). ----
+alter table business_members enable row level security;
+
+drop policy if exists "Owner manages members" on business_members;
+create policy "Owner manages members" on business_members
+  for all using (
+    business_id = (select id from businesses where owner_id = auth.uid())
+    or is_admin()
+  )
+  with check (
+    business_id = (select id from businesses where owner_id = auth.uid())
+    or is_admin()
+  );
+
+drop policy if exists "Member can view own membership" on business_members;
+create policy "Member can view own membership" on business_members
+  for select using (user_id = auth.uid());
 
 -- ---- child tables: isolated via their parent''s business_id ----
 alter table voucher_lines enable row level security;
