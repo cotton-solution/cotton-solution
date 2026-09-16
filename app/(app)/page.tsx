@@ -1,19 +1,38 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { navSections } from "@/lib/nav";
+import { modulesForCategory } from "@/lib/modules";
+import { BUSINESS_CATEGORY_LABELS } from "@/lib/supabase/businesses";
+import { useBusiness } from "@/components/business-provider";
 
 export default function DashboardPage() {
+  const { business } = useBusiness();
+
+  // Dashboard cards mirror the sidebar: only entitled modules.
+  const items = modulesForCategory(business?.category);
+  const categoryLabel = business?.category
+    ? BUSINESS_CATEGORY_LABELS[business.category]
+    : null;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-semibold text-slate-900">Dashboard</h1>
+          {categoryLabel && (
+            <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">
+              {categoryLabel}
+            </span>
+          )}
+        </div>
         <p className="text-sm text-slate-500 mt-1">
           Welcome back. Choose a module below to get started.
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {navSections.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
           return (
             <Link
@@ -33,9 +52,7 @@ export default function DashboardPage() {
               <h2 className="mt-4 text-sm font-semibold text-slate-900">
                 {item.label}
               </h2>
-              <p className="mt-1 text-xs text-slate-500">
-                {item.description}
-              </p>
+              <p className="mt-1 text-xs text-slate-500">{item.description}</p>
             </Link>
           );
         })}

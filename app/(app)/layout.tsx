@@ -6,6 +6,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { AuthGate } from "@/components/auth-gate";
 import { BusinessProvider } from "@/components/business-provider";
 import { BusinessGate } from "@/components/business-gate";
+import { ModuleGate } from "@/components/module-gate";
 import { SiteSettingsProvider } from "@/components/site-settings-provider";
 import { fetchSiteSettings } from "@/lib/supabase/site-settings";
 
@@ -35,7 +36,9 @@ export default function AppRootLayout({
                     <Sidebar />
                     <div className="lg:pl-64 flex flex-col min-h-screen">
                       <Header />
-                      <main className="flex-1 p-4 sm:p-6">{children}</main>
+                      <main className="flex-1 p-4 sm:p-6">
+                        <ModuleGate>{children}</ModuleGate>
+                      </main>
                     </div>
                   </div>
                 </BusinessGate>
