@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cropCards } from "@/lib/crops";
+import { InvoiceList } from "@/components/invoice-list";
 
 export default function CropsPage() {
   return (
@@ -38,6 +39,8 @@ export default function CropsPage() {
           );
         })}
       </div>
+
+      <InvoiceList category="crop" title="Crop invoices" />
     </div>
   );
 }

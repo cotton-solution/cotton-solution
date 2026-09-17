@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { vouchers, masterSetupCards } from "@/lib/vouchers";
+import { VoucherList } from "@/components/voucher-list";
 
 export default function AccountsFormsPage() {
   return (
@@ -77,6 +78,13 @@ export default function AccountsFormsPage() {
             </Link>
           ))}
         </div>
+      </section>
+
+      <section>
+        <h2 className="text-sm font-semibold text-slate-700 mb-3">
+          Recent Vouchers
+        </h2>
+        <VoucherList />
       </section>
     </div>
   );

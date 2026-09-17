@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { generalCards } from "@/lib/general";
+import { InvoiceList } from "@/components/invoice-list";
 
 export default function GeneralPage() {
   return (
@@ -38,6 +39,8 @@ export default function GeneralPage() {
           );
         })}
       </div>
+
+      <InvoiceList category="general" title="General invoices" />
     </div>
   );
 }

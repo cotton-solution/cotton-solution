@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { brokerageCards } from "@/lib/brokerage";
+import { InvoiceList } from "@/components/invoice-list";
 
 export default function BrokeragePage() {
   return (
@@ -38,6 +39,8 @@ export default function BrokeragePage() {
           );
         })}
       </div>
+
+      <InvoiceList category="brokerage" title="Brokerage invoices" />
     </div>
   );
 }
