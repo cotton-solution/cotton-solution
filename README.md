@@ -332,7 +332,44 @@ check who's an admin against).
   widen the `vouchers.voucher_type` check constraint (a fresh project
   can just run the updated `schema.sql` directly)
 
+**Step: Financial Overview dashboard** ✅
+- `/` is no longer a menu of module cards — it is now a real financial
+  overview, built from the rows the app already writes:
+  - **Cash position** (dark ledger panel): total cash + bank, with every
+    bank account and cash-in-hand listed as ledger rows, negatives in
+    parentheses
+  - **Receivable / Payable** with an ageing breakdown (0–30 / 31–60 /
+    61–90 / 90+) and the net position
+  - **Month-to-date figures strip**: Sales, Purchases, Brokerage earned,
+    Paid out — each with a % change against last month
+  - **Last 12 months chart** (hand-drawn inline SVG, no chart library):
+    toggles between "Money in / out" and "Sales / purchases", hover or
+    keyboard-focus a month to read its exact figures
+  - **Largest balances**: top parties by exposure, in either direction
+  - **Recent activity**: latest invoices and vouchers as one feed
+  - **Start something**: one-click launchers for the daily jobs
+    (receive cash, pay cash, sale invoice, weighment slip, journal
+    voucher, add a party), filtered by the modules that login can see
+  - Module cards are kept, but as a quiet strip at the bottom
+- `lib/supabase/dashboard.ts` aggregates `invoices` + `vouchers` +
+  `parties_customers` into the dashboard shape; if Supabase isn't
+  connected (or a query fails) it falls back to a realistic demo book
+  and says so. A connected business with no records yet gets honest
+  zeroes and empty-state copy, not fake numbers
+- New money formatting layer (`lib/format.ts`): South Asian digit
+  grouping (48,25,300), `Rs` prefix, lakh/crore short forms for chart
+  axes, and relative dates for the activity feed
+- Design tokens added to `tailwind.config.ts`: a `ledger` palette for
+  the dark panel and semantic `money` colours (in / out / due) so a
+  colour on screen always means something
+- All amounts are set in IBM Plex Mono with `tabular-nums` via the new
+  `.figure` class, so digits line up column-to-column like a printed
+  ledger. Fonts are wired through `lib/fonts.ts`
+
 **Still to come (next steps):**
+- Dashboard figures are derived from invoice/voucher rows, not from a
+  posted ledger — once double-entry posting lands they should read
+  `transactions` balances instead (the UI won't need to change)
 - General ledger posting: vouchers/invoices don't yet write into the
   `transactions` table (the actual double-entry ledger) — Trial
   Balance/P&L/Balance Sheet reports still show static mock data rather
