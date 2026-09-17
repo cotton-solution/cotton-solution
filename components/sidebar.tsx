@@ -1,26 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Power, Sprout } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LogOut, Sprout } from "lucide-react";
 import { modulesForUser } from "@/lib/modules";
 import { effectiveModuleKeys } from "@/lib/team-data";
 import { BUSINESS_CATEGORY_LABELS } from "@/lib/supabase/businesses";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
 import { useBusiness } from "@/components/business-provider";
 import { useSiteSettings } from "@/components/site-settings-provider";
+import { NavTree } from "@/components/nav-tree";
 
 export function Sidebar() {
-  const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
   const { business, isOwner, membership } = useBusiness();
   const { settings } = useSiteSettings();
 
-  // The business category's modules, narrowed further by this signed-in
-  // user's role if they're a staff login rather than the owner.
-  const items = modulesForUser(business?.category, {
+  const modules = modulesForUser(business?.category, {
     isOwner,
     moduleKeys: membership ? effectiveModuleKeys(membership) : [],
   });
@@ -34,8 +31,11 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 border-r border-slate-200 bg-white">
-      <div className="flex items-center gap-2 h-16 px-5 border-b border-slate-200">
+    <aside className="hidden lg:flex lg:w-[264px] lg:flex-col lg:fixed lg:inset-y-0 border-r border-slate-200 bg-white">
+      <Link
+        href="/"
+        className="flex items-center gap-2.5 h-16 px-5 border-b border-slate-200 hover:bg-slate-50 transition-colors"
+      >
         {settings.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -52,49 +52,23 @@ export function Sidebar() {
           <p className="text-sm font-semibold text-slate-900 truncate">
             {settings.siteName}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 truncate">
             {categoryLabel ?? "Commission Agent"}
           </p>
         </div>
+      </Link>
+
+      <div className="flex-1 overflow-y-auto thin-scrollbar px-3 py-4">
+        <NavTree modules={modules} />
       </div>
 
-      <nav className="flex-1 overflow-y-auto thin-scrollbar px-3 py-4 space-y-1">
-        {items.map((item) => {
-          const active = pathname?.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-brand-50 text-brand-700"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-              )}
-            >
-              <Icon
-                size={18}
-                className={active ? "text-brand-600" : "text-slate-400"}
-              />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="border-t border-slate-200 p-3 space-y-1">
+      <div className="border-t border-slate-200 p-3">
         <button
           onClick={handleLogOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13.5px] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
         >
           <LogOut size={18} className="text-slate-400" />
-          Log Out
-        </button>
-        <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors">
-          <Power size={18} className="text-slate-400" />
-          Exit
+          Log out
         </button>
       </div>
     </aside>

@@ -366,6 +366,33 @@ check who's an admin against).
   `.figure` class, so digits line up column-to-column like a printed
   ledger. Fonts are wired through `lib/fonts.ts`
 
+**Step: Navigation & information architecture** ✅
+- The module registry (`lib/modules.ts`) now declares every *page*,
+  not just every module — each module carries `children` grouped into
+  named sections (Receipts / Payments / Adjustments / Master setup,
+  Ledgers / Cash & bank / Financial statements, and so on). Adding a
+  screen is still a one-line edit in one file
+- New `NavTree` component drives **both** the desktop sidebar and the
+  mobile drawer, so the two can't drift apart. Modules expand in place,
+  the module you're in opens automatically, and every voucher, report
+  and master screen is now reachable in one click instead of
+  dashboard → module hub → card → form
+- A **Dashboard** link sits at the top of the nav — previously the only
+  way back was the logo
+- New **command palette** (`Ctrl`/`⌘` + `K`, or the Search button in the
+  header): searches every screen the signed-in user is entitled to, by
+  name and by the words people actually use at the mandi — rokar,
+  kanta, sauda, khata, bhao — with arrow keys and Enter to jump
+- New **breadcrumb trail** under the business name, resolved against the
+  registry so labels read like the sidebar ("Cash Receiving Voucher",
+  not the URL slug); moves to its own row on mobile
+- Header rebuilt: working avatar **menu** (name, email, role, User
+  access, Log out — the avatar was previously inert), and the financial
+  year badge is now computed from today's date on a July–June year
+  instead of the hardcoded "FY 2026-27"
+- Removed the dead **Exit** button from the sidebar and mobile drawer
+  (it had no handler and did nothing)
+
 **Still to come (next steps):**
 - Dashboard figures are derived from invoice/voucher rows, not from a
   posted ledger — once double-entry posting lands they should read
