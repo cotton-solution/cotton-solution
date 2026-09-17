@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DataModeBanner } from "@/components/data-mode-banner";
 import { bankAccounts } from "@/lib/chart-of-accounts";
 import { saveVoucher, type VoucherType } from "@/lib/supabase/vouchers";
+import { useDocumentNumber } from "@/lib/hooks/use-document-number";
 
 type Direction = "cash_to_bank" | "bank_to_cash";
 
@@ -18,8 +19,10 @@ const DIRECTION_LABEL: Record<Direction, string> = {
 };
 
 export function ContraVoucherForm() {
-  const [voucherNo] = useState(
-    `CTV-${Math.floor(1000 + Math.random() * 8999)}`
+  const { number: voucherNo, ready: numberReady } = useDocumentNumber(
+    "CTV",
+    "vouchers",
+    "voucher_no"
   );
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [direction, setDirection] = useState<Direction>("cash_to_bank");
@@ -69,7 +72,9 @@ export function ContraVoucherForm() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Voucher #{" "}
-            <span className="font-medium text-slate-700">{voucherNo}</span>
+            <span className="font-medium text-slate-700">
+              {numberReady ? voucherNo : "Assigning…"}
+            </span>
           </p>
         </div>
         {saved && (

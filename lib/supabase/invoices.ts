@@ -23,6 +23,59 @@ export type InvoicePayload = {
   lines: InvoiceLinePayload[];
 };
 
+export type InvoiceRecord = {
+  id: string;
+  invoiceNo: string;
+  category: InvoiceCategory;
+  invoiceType: "purchase" | "sale";
+  invoiceDate: string;
+  partyId: string | null;
+  subtotal: number;
+  brokerageAmount: number;
+  netTotal: number;
+  notes: string | null;
+};
+
+/**
+ * All saved invoices for the signed-in business (RLS scopes this
+ * automatically), newest first. Powers the invoice list on each
+ * module's hub page — previously there was no way to find an invoice
+ * again once it had been saved.
+ */
+export async function fetchInvoices(filter?: {
+  category?: InvoiceCategory;
+}): Promise<InvoiceRecord[]> {
+  if (!supabase) return [];
+  let query = supabase
+    .from("invoices")
+    .select(
+      "id, invoice_no, invoice_category, invoice_type, invoice_date, party_id, subtotal, brokerage_amount, net_total, notes"
+    )
+    .order("invoice_date", { ascending: false })
+    .order("invoice_no", { ascending: false });
+
+  if (filter?.category) query = query.eq("invoice_category", filter.category);
+
+  const { data, error } = await query;
+  if (error || !data) {
+    if (error) console.error("fetchInvoices error:", error.message);
+    return [];
+  }
+
+  return data.map((row) => ({
+    id: row.id,
+    invoiceNo: row.invoice_no,
+    category: row.invoice_category,
+    invoiceType: row.invoice_type,
+    invoiceDate: row.invoice_date,
+    partyId: row.party_id,
+    subtotal: Number(row.subtotal) || 0,
+    brokerageAmount: Number(row.brokerage_amount) || 0,
+    netTotal: Number(row.net_total) || 0,
+    notes: row.notes,
+  }));
+}
+
 export async function saveInvoice(
   payload: InvoicePayload
 ): Promise<{ error: string | null }> {

@@ -393,6 +393,57 @@ check who's an admin against).
 - Removed the dead **Exit** button from the sidebar and mobile drawer
   (it had no handler and did nothing)
 
+**Step: Critical data-correctness fixes** ✅
+- **Sequential document numbering** (`lib/hooks/use-document-number.ts`):
+  every invoice, voucher, contract and weighment slip used to pick
+  `PREFIX-<random 4-digit number>`, which could collide at any time —
+  two people saving a Cash Receiving Voucher in the same minute had a
+  real chance of landing on the same number, and nothing stopped it.
+  Numbers are now read as the highest existing one for that prefix,
+  scoped to the business by RLS, plus one — the way a paper voucher
+  book works. Demo mode counts up a session-only sequence instead of
+  calling `Math.random()`
+- **Live Party directory** (`lib/hooks/use-party-directory.ts`): every
+  form that needs a party dropdown — Invoices, Contracts, Weighment
+  slips, Vouchers, Multi Invoice batches — imported a hardcoded
+  3-party demo list directly, so a customer added in Party Master
+  (which does read/write Supabase) never appeared anywhere else in the
+  app. All six forms now share one hook that reads the real Party
+  Master list, with a clear "No parties yet — add one in Party Master"
+  state and a disabled Save until a party exists
+- **Live Chart of Accounts** (`lib/hooks/use-account-directory.ts`):
+  same bug on the Journal Voucher form, which posted against a
+  hardcoded 10-row list instead of the accounts actually created on
+  the (live) Chart of Accounts screen. It now reads real active
+  accounts, same pattern as parties
+
+**Step: List pages for invoices & vouchers** ✅
+- New `RecordsTable` component: search box, filter chips, a totals
+  footer, loading/empty states — the shared shell for "find something
+  I already saved," which no module had before
+- New `RecordDetailDrawer`: click any row to see the full record —
+  party, amounts, WHT/brokerage breakdown, narration — with a **Print**
+  button, instead of a saved document being unreachable the moment you
+  left its form
+- **Invoice list** (`components/invoice-list.tsx`), added under the
+  cards on the **Brokerage**, **General** and **Crops** hub pages:
+  search by invoice # or party, filter by Sale/Purchase, running total
+  of the filtered rows
+- **Voucher list** (`components/voucher-list.tsx`), added under
+  **Accounts Forms**: search by voucher #, party or narration, filter
+  by Receipts / Payments / Journal / Contra
+- `lib/supabase/invoices.ts` and `lib/supabase/vouchers.ts` gained
+  `fetchInvoices()` / `fetchVouchers()`, scoped to the signed-in
+  business exactly like every save already was
+- `lib/demo-records.ts`: realistic sample invoices and vouchers for
+  demo mode, so the new list pages aren't empty on first look — shaped
+  identically to the Supabase result so the list components never need
+  to know which source they got
+- **Known limitation:** these lists are read + print, not yet edit —
+  correcting a saved invoice or voucher still means voiding it by hand
+  and re-entering it. Inline edit is a reasonable next step once this
+  is confirmed useful
+
 **Still to come (next steps):**
 - Dashboard figures are derived from invoice/voucher rows, not from a
   posted ledger — once double-entry posting lands they should read

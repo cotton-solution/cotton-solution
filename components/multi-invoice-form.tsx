@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, CircleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DataModeBanner } from "@/components/data-mode-banner";
-import { mockParties } from "@/lib/party-data";
 import { saveInvoiceBatch } from "@/lib/supabase/invoice-batches";
+import { usePartyDirectory } from "@/lib/hooks/use-party-directory";
 
 type BatchRow = {
   id: string;
@@ -16,20 +16,29 @@ type BatchRow = {
   amount: number;
 };
 
-function newRow(): BatchRow {
+function newRow(defaultPartyId = ""): BatchRow {
   return {
     id: Math.random().toString(36).slice(2, 9),
-    partyId: mockParties[0]?.id ?? "",
+    partyId: defaultPartyId,
     invoiceType: "Sale",
     amount: 0,
   };
 }
 
 export function MultiInvoiceForm({ title }: { title: string }) {
+  const { parties, loading: partiesLoading } = usePartyDirectory();
   const [rows, setRows] = useState<BatchRow[]>([newRow(), newRow()]);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Point any still-unset rows at the first real party once loaded.
+  useEffect(() => {
+    if (parties.length === 0) return;
+    setRows((prev) =>
+      prev.map((r) => (r.partyId ? r : { ...r, partyId: parties[0].id }))
+    );
+  }, [parties]);
 
   const total = useMemo(
     () => rows.reduce((sum, r) => sum + r.amount, 0),
@@ -42,7 +51,7 @@ export function MultiInvoiceForm({ title }: { title: string }) {
   }
 
   function addRow() {
-    setRows((prev) => [...prev, newRow()]);
+    setRows((prev) => [...prev, newRow(parties[0]?.id ?? "")]);
     setSaved(false);
   }
 
@@ -52,6 +61,10 @@ export function MultiInvoiceForm({ title }: { title: string }) {
   }
 
   async function handleSaveBatch() {
+    if (rows.some((r) => !r.partyId)) {
+      setError("Add a party in Party Master first.");
+      return;
+    }
     setError(null);
     setSaving(true);
     const { error } = await saveInvoiceBatch(
@@ -118,12 +131,18 @@ export function MultiInvoiceForm({ title }: { title: string }) {
                   <td className="px-4 py-2.5">
                     <Select
                       value={row.partyId}
+                      disabled={partiesLoading || parties.length === 0}
                       onChange={(e) =>
                         updateRow(row.id, { partyId: e.target.value })
                       }
                       className="h-9"
                     >
-                      {mockParties.map((p) => (
+                      {parties.length === 0 && (
+                        <option value="">
+                          {partiesLoading ? "Loading…" : "No parties yet"}
+                        </option>
+                      )}
+                      {parties.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}
                         </option>
@@ -194,7 +213,7 @@ export function MultiInvoiceForm({ title }: { title: string }) {
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button onClick={handleSaveBatch} disabled={saving}>
+        <Button onClick={handleSaveBatch} disabled={saving || parties.length === 0}>
           {saving ? "Saving…" : "Save Batch"}
         </Button>
       </div>

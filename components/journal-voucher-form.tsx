@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, AlertTriangle, CheckCircle2, CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DataModeBanner } from "@/components/data-mode-banner";
-import { journalAccounts } from "@/lib/chart-of-accounts";
 import { saveJournalVoucher } from "@/lib/supabase/vouchers";
+import { useAccountDirectory } from "@/lib/hooks/use-account-directory";
+import { useDocumentNumber } from "@/lib/hooks/use-document-number";
 
 type JournalLine = {
   id: string;
@@ -17,22 +18,34 @@ type JournalLine = {
   credit: number;
 };
 
-function newLine(): JournalLine {
+function newLine(defaultAccount = ""): JournalLine {
   return {
     id: Math.random().toString(36).slice(2, 9),
-    account: journalAccounts[0].code,
+    account: defaultAccount,
     debit: 0,
     credit: 0,
   };
 }
 
 export function JournalVoucherForm() {
-  const [voucherNo] = useState(
-    `JV-${Math.floor(1000 + Math.random() * 8999)}`
+  const { number: voucherNo, ready: numberReady } = useDocumentNumber(
+    "JV",
+    "vouchers",
+    "voucher_no"
   );
+  const { accounts, loading: accountsLoading } = useAccountDirectory();
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [narration, setNarration] = useState("");
   const [lines, setLines] = useState<JournalLine[]>([newLine(), newLine()]);
+
+  // Once the real Chart of Accounts loads, point any still-empty lines
+  // at its first account instead of leaving them unset.
+  useEffect(() => {
+    if (accounts.length === 0) return;
+    setLines((prev) =>
+      prev.map((l) => (l.account ? l : { ...l, account: accounts[0].code }))
+    );
+  }, [accounts]);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -55,7 +68,7 @@ export function JournalVoucherForm() {
   }
 
   function addLine() {
-    setLines((prev) => [...prev, newLine()]);
+    setLines((prev) => [...prev, newLine(accounts[0]?.code ?? "")]);
     setSaved(false);
   }
 
@@ -89,7 +102,9 @@ export function JournalVoucherForm() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Voucher #{" "}
-            <span className="font-medium text-slate-700">{voucherNo}</span>
+            <span className="font-medium text-slate-700">
+              {numberReady ? voucherNo : "Assigning…"}
+            </span>
           </p>
         </div>
         {saved && (
@@ -159,12 +174,18 @@ export function JournalVoucherForm() {
                     <td className="px-3 py-2">
                       <Select
                         value={line.account}
+                        disabled={accountsLoading || accounts.length === 0}
                         onChange={(e) =>
                           updateLine(line.id, { account: e.target.value })
                         }
                         className="h-9"
                       >
-                        {journalAccounts.map((a) => (
+                        {accounts.length === 0 && (
+                          <option value="">
+                            {accountsLoading ? "Loading accounts…" : "No accounts yet"}
+                          </option>
+                        )}
+                        {accounts.map((a) => (
                           <option key={a.code} value={a.code}>
                             {a.name}
                           </option>

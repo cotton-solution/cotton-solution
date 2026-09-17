@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DataModeBanner } from "@/components/data-mode-banner";
-import { mockParties } from "@/lib/party-data";
 import { saveInvoice, type InvoiceCategory } from "@/lib/supabase/invoices";
+import { usePartyDirectory } from "@/lib/hooks/use-party-directory";
+import { useDocumentNumber } from "@/lib/hooks/use-document-number";
 
 type LineItem = {
   id: string;
@@ -45,15 +46,26 @@ export function InvoiceForm({
   partyLabel: "Vendor" | "Customer";
   includeBrokerage: boolean;
 }) {
-  const [invoiceNo] = useState(`${invoicePrefix}-${Math.floor(1000 + Math.random() * 8999)}`);
+  const { number: invoiceNo, ready: numberReady } = useDocumentNumber(
+    invoicePrefix,
+    "invoices",
+    "invoice_no"
+  );
+  const { parties, loading: partiesLoading } = usePartyDirectory();
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [partyId, setPartyId] = useState(mockParties[0]?.id ?? "");
+  const [partyId, setPartyId] = useState("");
   const [brokeragePercent, setBrokeragePercent] = useState(1);
   const [lines, setLines] = useState<LineItem[]>([newLine()]);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Default to the first party once the directory has loaded, instead
+  // of hardcoding mockParties[0] which may not exist for this business.
+  useEffect(() => {
+    if (!partyId && parties.length > 0) setPartyId(parties[0].id);
+  }, [parties, partyId]);
 
   const subtotal = useMemo(
     () => lines.reduce((sum, l) => sum + l.qty * l.rate, 0),
@@ -84,6 +96,10 @@ export function InvoiceForm({
   }
 
   async function handleSave() {
+    if (!partyId) {
+      setError(`Add a ${partyLabel.toLowerCase()} in Party Master first.`);
+      return;
+    }
     setError(null);
     setSaving(true);
     const { error } = await saveInvoice({
@@ -118,7 +134,10 @@ export function InvoiceForm({
         <div>
           <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Invoice # <span className="font-medium text-slate-700">{invoiceNo}</span>
+            Invoice #{" "}
+            <span className="font-medium text-slate-700">
+              {numberReady ? invoiceNo : "Assigning…"}
+            </span>
           </p>
         </div>
         {saved && (
@@ -156,17 +175,28 @@ export function InvoiceForm({
             <Select
               id="inv-party"
               value={partyId}
+              disabled={partiesLoading || parties.length === 0}
               onChange={(e) => {
                 setPartyId(e.target.value);
                 setSaved(false);
               }}
             >
-              {mockParties.map((p) => (
+              {parties.length === 0 && (
+                <option value="">
+                  {partiesLoading ? "Loading parties…" : "No parties yet"}
+                </option>
+              )}
+              {parties.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.id})
                 </option>
               ))}
             </Select>
+            {!partiesLoading && parties.length === 0 && (
+              <p className="mt-1 text-xs text-amber-700">
+                No {partyLabel.toLowerCase()}s yet — add one in Party Master.
+              </p>
+            )}
           </div>
         </div>
 
@@ -331,7 +361,7 @@ export function InvoiceForm({
         <Button variant="secondary" onClick={() => window.print()}>
           Print
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving || !partyId}>
           {saving ? "Saving…" : "Save"}
         </Button>
       </div>

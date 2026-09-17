@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { DataModeBanner } from "@/components/data-mode-banner";
-import { mockParties } from "@/lib/party-data";
+import { usePartyDirectory } from "@/lib/hooks/use-party-directory";
+import { useDocumentNumber } from "@/lib/hooks/use-document-number";
 import { cropNames } from "@/lib/crops";
 import { saveWeighment } from "@/lib/supabase/weighment";
 
@@ -22,12 +23,19 @@ export function WeighmentForm({
   slipType: "purchase" | "sale";
   partyLabel: "Vendor" | "Customer";
 }) {
-  const [slipNo] = useState(
-    `${slipPrefix}-${Math.floor(1000 + Math.random() * 8999)}`
+  const { number: slipNo, ready: numberReady } = useDocumentNumber(
+    slipPrefix,
+    "weighment_slips",
+    "slip_no"
   );
+  const { parties, loading: partiesLoading } = usePartyDirectory();
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [vehicleNo, setVehicleNo] = useState("");
-  const [partyId, setPartyId] = useState(mockParties[0]?.id ?? "");
+  const [partyId, setPartyId] = useState("");
+
+  useEffect(() => {
+    if (!partyId && parties.length > 0) setPartyId(parties[0].id);
+  }, [parties, partyId]);
   const [crop, setCrop] = useState(cropNames[0]);
   const [bags, setBags] = useState<number>(0);
   const [grossWeight, setGrossWeight] = useState<number>(0);
@@ -39,6 +47,10 @@ export function WeighmentForm({
   const netWeight = Math.max(grossWeight - tareWeight, 0);
 
   async function handleSave() {
+    if (!partyId) {
+      setError(`Add a ${partyLabel.toLowerCase()} in Party Master first.`);
+      return;
+    }
     setError(null);
     setSaving(true);
     const { error } = await saveWeighment({
@@ -67,7 +79,9 @@ export function WeighmentForm({
           <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Slip #{" "}
-            <span className="font-medium text-slate-700">{slipNo}</span>
+            <span className="font-medium text-slate-700">
+              {numberReady ? slipNo : "Assigning…"}
+            </span>
           </p>
         </div>
         {saved && (
@@ -118,17 +132,28 @@ export function WeighmentForm({
             <Select
               id="w-party"
               value={partyId}
+              disabled={partiesLoading || parties.length === 0}
               onChange={(e) => {
                 setPartyId(e.target.value);
                 setSaved(false);
               }}
             >
-              {mockParties.map((p) => (
+              {parties.length === 0 && (
+                <option value="">
+                  {partiesLoading ? "Loading parties…" : "No parties yet"}
+                </option>
+              )}
+              {parties.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.id})
                 </option>
               ))}
             </Select>
+            {!partiesLoading && parties.length === 0 && (
+              <p className="mt-1 text-xs text-amber-700">
+                No {partyLabel.toLowerCase()}s yet — add one in Party Master.
+              </p>
+            )}
           </div>
 
           <div>
@@ -200,7 +225,7 @@ export function WeighmentForm({
         <Button variant="secondary" onClick={() => window.print()}>
           Print Slip
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving || !partyId}>
           {saving ? "Saving…" : "Save Slip"}
         </Button>
       </div>
