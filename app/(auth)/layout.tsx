@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "../globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { SiteSettingsProvider } from "@/components/site-settings-provider";
@@ -10,6 +10,13 @@ import { fetchSiteSettings } from "@/lib/supabase/site-settings";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
+});
+
+const figureFont = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-figure",
   display: "swap",
 });
 
@@ -27,7 +34,7 @@ export default function AuthRootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${figureFont.variable}`}>
       <body>
         <SiteSettingsProvider>
           <AuthProvider>{children}</AuthProvider>

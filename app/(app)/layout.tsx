@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "../globals.css";
+import { fontVariables } from "@/lib/fonts";
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import { AuthProvider } from "@/components/auth-provider";
@@ -25,7 +26,7 @@ export default function AppRootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={fontVariables}>
       <body>
         <SiteSettingsProvider>
           <AuthProvider>

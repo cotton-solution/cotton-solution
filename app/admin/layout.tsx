@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "../globals.css";
+import { fontVariables } from "@/lib/fonts";
 import { AuthProvider } from "@/components/auth-provider";
 import { SiteSettingsProvider } from "@/components/site-settings-provider";
 import { fetchSiteSettings } from "@/lib/supabase/site-settings";
@@ -18,7 +19,7 @@ export default function AdminRootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={fontVariables}>
       <body>
         <SiteSettingsProvider>
           <AuthProvider>{children}</AuthProvider>
