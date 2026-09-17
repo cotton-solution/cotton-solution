@@ -277,7 +277,9 @@ create table if not exists vouchers (
   voucher_type text not null check (
     voucher_type in (
       'cash_receiving', 'cash_payment', 'journal',
-      'bank_cheque_deposit', 'bank_cheque_issue', 'cash_payment_wht'
+      'bank_cheque_deposit', 'bank_cheque_issue', 'cash_payment_wht',
+      'bank_receipt', 'bank_payment',
+      'contra_cash_to_bank', 'contra_bank_to_cash'
     )
   ),
   voucher_date date not null,

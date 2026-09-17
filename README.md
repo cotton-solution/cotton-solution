@@ -314,6 +314,24 @@ check who's an admin against).
   truly cannot submit vouchers even via a direct API call, that needs
   follow-up RLS work per table
 
+**Step: Bank Receipt, Bank Payment & Contra Vouchers** ✅
+- Three new voucher forms under Accounts Forms → Vouchers, next to the
+  existing Cash Receiving/Payment and Bank Cheque Deposit/Issue ones:
+  - **Bank Receipt Voucher** — customer pays straight into a bank
+    account (online transfer / cheque deposit), instead of cash
+  - **Bank Payment Voucher** — pay a vendor by bank transfer, online
+    payment, or pay order
+  - **Contra Voucher** — move your own money between cash and a bank
+    account (Cash → Bank or Bank → Cash); no customer/vendor involved,
+    so it has its own simpler form (date, direction, bank account,
+    amount, narration)
+- Bank Receipt/Payment reuse the same voucher form component as the
+  rest (mobile + PC friendly by the same pattern already in the app)
+- If you already ran an older `schema.sql`, run
+  **`supabase/migration_6_new_vouchers.sql`** once in the SQL editor to
+  widen the `vouchers.voucher_type` check constraint (a fresh project
+  can just run the updated `schema.sql` directly)
+
 **Still to come (next steps):**
 - General ledger posting: vouchers/invoices don't yet write into the
   `transactions` table (the actual double-entry ledger) — Trial
