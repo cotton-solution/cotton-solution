@@ -3,15 +3,19 @@ import { supabase } from "@/lib/supabase/client";
 export type VoucherType =
   | "cash_receiving"
   | "cash_payment"
+  | "bank_receipt"
+  | "bank_payment"
   | "bank_cheque_deposit"
   | "bank_cheque_issue"
-  | "cash_payment_wht";
+  | "cash_payment_wht"
+  | "contra_cash_to_bank"
+  | "contra_bank_to_cash";
 
 export type SimpleVoucherPayload = {
   voucherNo: string;
   voucherType: VoucherType;
   date: string;
-  partyId: string;
+  partyId?: string;
   bankAccount?: string;
   chequeNo?: string;
   chequeDate?: string;
@@ -30,7 +34,7 @@ export async function saveVoucher(
     voucher_no: payload.voucherNo,
     voucher_type: payload.voucherType,
     voucher_date: payload.date,
-    party_id: payload.partyId,
+    party_id: payload.partyId || null,
     bank_account: payload.bankAccount || null,
     cheque_no: payload.chequeNo || null,
     cheque_date: payload.chequeDate || null,

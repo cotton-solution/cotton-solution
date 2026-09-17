@@ -7,6 +7,9 @@ import {
   Receipt,
   Users,
   ListTree,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Repeat,
 } from "lucide-react";
 
 export const vouchers = [
@@ -27,6 +30,24 @@ export const vouchers = [
     href: "/accounts-forms/journal-voucher",
     icon: BookText,
     description: "Post a manual debit/credit journal entry",
+  },
+  {
+    label: "Bank Receipt Voucher",
+    href: "/accounts-forms/bank-receipt-voucher",
+    icon: ArrowDownToLine,
+    description: "Customer payment received directly into a bank account",
+  },
+  {
+    label: "Bank Payment Voucher",
+    href: "/accounts-forms/bank-payment-voucher",
+    icon: ArrowUpFromLine,
+    description: "Pay a vendor by bank transfer, online payment, or pay order",
+  },
+  {
+    label: "Contra Voucher",
+    href: "/accounts-forms/contra-voucher",
+    icon: Repeat,
+    description: "Move your own money between cash and a bank account",
   },
   {
     label: "Bank Cheque Deposit",
