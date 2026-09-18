@@ -132,12 +132,10 @@ export default function DashboardPage() {
 
           {/* Row 2 — month-to-date figures */}
           <FiguresStrip
+            bankBalance={data.cashLines.reduce((sum, l) => sum + l.balance, 0)}
             sales={data.totals.sales}
             salesPrev={data.totals.salesPrev}
-            purchases={data.totals.purchases}
-            purchasesPrev={data.totals.purchasesPrev}
-            brokerage={data.totals.brokerage}
-            brokeragePrev={data.totals.brokeragePrev}
+            outstandingInvoices={data.totals.receivable}
             expenses={data.totals.expenses}
             expensesPrev={data.totals.expensesPrev}
             periodLabel={`${thisMonth} to date`}
@@ -169,7 +167,7 @@ export default function DashboardPage() {
       <section className="rule-t pt-5">
         <h2 className="text-[13px] font-medium text-slate-600">Your modules</h2>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          {modules.map((m) => {
+          {modules.filter((m) => m.key !== "dashboard").map((m) => {
             const Icon = m.icon;
             return (
               <Link
