@@ -19,7 +19,7 @@ type LineItem = {
   rate: number;
 };
 
-const units = ["Maund", "KG", "Bags", "Bales"];
+const units = ["Pcs", "KG", "Box", "Hours", "Unit", "Ltr"];
 
 function newLine(): LineItem {
   return {

@@ -30,6 +30,10 @@ export type Business = {
   billingStatus: BillingStatus;
   lastBilledAt: string | null;
   createdAt: string;
+  currency: string;
+  taxNumber: string | null;
+  address: string | null;
+  website: string | null;
 };
 
 type BusinessRow = {
@@ -45,6 +49,10 @@ type BusinessRow = {
   billing_status: BillingStatus;
   last_billed_at: string | null;
   created_at: string;
+  currency: string;
+  tax_number: string | null;
+  address: string | null;
+  website: string | null;
 };
 
 function rowToBusiness(row: BusinessRow): Business {
@@ -61,11 +69,15 @@ function rowToBusiness(row: BusinessRow): Business {
     billingStatus: row.billing_status,
     lastBilledAt: row.last_billed_at,
     createdAt: row.created_at,
+    currency: row.currency ?? "PKR",
+    taxNumber: row.tax_number,
+    address: row.address,
+    website: row.website,
   };
 }
 
 const BUSINESS_COLUMNS =
-  "id, owner_id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at";
+  "id, owner_id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at, currency, tax_number, address, website";
 
 /** The signed-in customer's own business (tenant) record, or null. */
 export async function fetchMyBusiness(): Promise<Business | null> {
@@ -155,6 +167,10 @@ export async function updateBusinessProfile(
     contactEmail?: string | null;
     contactPhone?: string | null;
     category?: BusinessCategory | null;
+    currency?: string;
+    taxNumber?: string | null;
+    address?: string | null;
+    website?: string | null;
   }
 ): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
@@ -171,11 +187,23 @@ export async function updateBusinessProfile(
       ...(updates.category !== undefined
         ? { business_category: updates.category }
         : {}),
+      ...(updates.currency !== undefined ? { currency: updates.currency } : {}),
+      ...(updates.taxNumber !== undefined ? { tax_number: updates.taxNumber } : {}),
+      ...(updates.address !== undefined ? { address: updates.address } : {}),
+      ...(updates.website !== undefined ? { website: updates.website } : {}),
     })
     .eq("id", businessId);
 
   return { error: error?.message ?? null };
 }
+
+/**
+ * Self-service version of the above for the Settings → Company Profile
+ * page: the signed-in owner editing their own business. Same underlying
+ * call — RLS ("Owner or admin can update business") is what actually
+ * decides whether the update is allowed.
+ */
+export const updateMyCompanyProfile = updateBusinessProfile;
 
 /** Admin-only: mark a business billed / unbilled for the current cycle. */
 export async function setBillingStatus(

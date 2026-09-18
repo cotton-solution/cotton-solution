@@ -1,11 +1,17 @@
-# Bahar-e-Madina Commission Agent
+# Bahar-e-Madina — Accounting Software
 
-A **multi-tenant SaaS accounting service** for cotton/wheat commission
-agents. Businesses sign up at `/signup`, each gets its own fully
-isolated set of accounts, parties, vouchers, contracts and reports —
+A **multi-tenant SaaS accounting service** for small and medium
+businesses. Businesses sign up at `/signup`, each gets its own fully
+isolated set of accounts, parties, vouchers, invoices and reports —
 no business ever sees another business's data. The service owner
 manages subscriptions (yearly billing) from a separate `/admin` panel.
 Built with Next.js (App Router) + Tailwind CSS + Supabase.
+
+Every business gets the same 9-module menu — Dashboard, Transactions,
+Banking, Sales & Receivables, Purchases & Payables, Inventory,
+Expenses, Financial Reports, Settings & Administration. See **"Rebuilt
+as a generic 9-module accounting app"** further down for the full
+module list and what each one covers.
 
 - **Customers** (businesses) → sign up / log in at `/signup` and `/login`.
 - **You** (service owner) → sign in at `/admin/login` to see every
@@ -30,6 +36,13 @@ Then open http://localhost:3000
    invoices, etc.), enables Row Level Security scoped per business, and
    sets up the triggers that automatically create and seed a new
    business the moment someone signs up.
+2b. Run `supabase/migration_5_team_access.sql`, `migration_6_new_vouchers.sql`
+   and `migration_7_generic_accounting.sql`, in that order, in the same
+   SQL Editor — they add team/staff logins, the newer voucher types, and
+   the Banking / Quotations / Purchase Orders / Inventory / Expenses /
+   Company Profile tables the 9-module menu needs. (A brand-new project
+   just needs `schema.sql` then these three, in order — see each
+   migration's own comment for what it adds.)
 3. Copy `.env.local.example` to `.env.local` and fill in your project's
    **Project URL** and **anon public key** (Project Settings → API).
 4. Restart `npm run dev`. Every form in the app (Party Master, vouchers,
@@ -455,6 +468,53 @@ check who's an admin against).
 - A reports layer that reads real Supabase data instead of the mock
   tables in `lib/report-data.ts`
 - Party Master's Switch button (Customer ↔ Vendor view) is still cosmetic
+
+**Step: Rebuilt as a generic 9-module accounting app** ✅
+- The cotton/crop-trading-specific modules — **Crops**, **Brokerage**,
+  **Trader**, **General** — have been removed. The app is now a
+  generic accounting product, with a fixed 9-item menu
+  (`lib/modules.ts`) that every business gets, in this order:
+  1. **Dashboard** — financial overview, cash flow & recent activity
+  2. **Transactions** — every voucher (was "Accounts Forms")
+  3. **Banking** *(new)* — Bank Accounts, Reconciliation, Credit Cards
+  4. **Sales & Receivables** — Invoices, Customers, **Quotations** *(new)*
+  5. **Purchases & Payables** — Bills, Suppliers, **Purchase Orders** *(new)*
+  6. **Inventory** *(new)* — Items Catalog, Warehouses, Stock Movements
+  7. **Expenses** *(new)* — category-wise daily expense tracking
+  8. **Financial Reports** — every report (was "Accounts Reports")
+  9. **Settings & Administration** — Company Profile *(new)*, Chart of
+     Accounts, User Permissions
+- Business category (`shopkeeper`/`wholesaler`/etc.) no longer changes
+  which modules are visible — every business gets the same 9. The
+  category field is kept as descriptive info only.
+- Customers and Vendors share one party directory (`can_also_be_vendor`
+  flag) — **Sales → Customers** is the full editor, **Purchases →
+  Suppliers** is a filtered read view of the same data.
+- Sale invoices and Purchase bills reuse the existing generic invoice
+  engine (`invoice_category = 'general'`) — no schema change needed
+  there.
+- **If you already ran an older `schema.sql`**, run
+  **`supabase/migration_7_generic_accounting.sql`** once in the SQL
+  editor. It adds (a fresh project can just run the updated
+  `schema.sql` + this migration, in order):
+  - `currency`, `tax_number`, `address`, `website` columns on
+    `businesses` (Company Profile)
+  - `bank_accounts`, `bank_reconciliations`, `credit_cards` (Banking)
+  - `quotations` + `quotation_lines` (Sales — Quotations/Estimates)
+  - `purchase_orders` + `purchase_order_lines` (Purchases — POs)
+  - `warehouses`, `inventory_items`, `stock_movements` (Inventory)
+  - `expenses` (Expenses)
+  - Row Level Security on every new table, same
+    `business_id = my_business_id()` tenant-isolation pattern as
+    everything else
+  - Widens the `business_members` role check to also accept `sales` /
+    `purchases` (the `trader` role value is kept for backward
+    compatibility — the app now labels it "Sales & Purchases")
+- **Known limitation:** the new Banking, Quotations, Purchase Orders,
+  Inventory and Expenses modules are full CRUD against real tables,
+  but — like invoices/vouchers — they don't yet post into the
+  `transactions` double-entry ledger, so they won't appear in Trial
+  Balance/P&L/Balance Sheet until that posting layer is built.
 
 ## Tech stack
 - Next.js 14 (App Router), TypeScript

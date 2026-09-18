@@ -31,7 +31,7 @@ export function CashPosition({ lines }: { lines: CashLine[] }) {
             </p>
           </div>
           <Link
-            href="/accounts-reports/cash-book"
+            href="/reports/cash-book"
             className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[13px] font-medium text-white/90 hover:bg-white/20 transition-colors"
           >
             Cash book

@@ -7,7 +7,6 @@ import {
   BookOpen,
   FileText,
   ReceiptText,
-  Scale,
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
@@ -23,73 +22,53 @@ type Action = {
 };
 
 /**
- * The jobs a commission agent does every day, one click from the
- * dashboard — so nobody has to walk Dashboard → module → card → form
- * to enter a receipt.
+ * The jobs a business does every day, one click from the dashboard —
+ * so nobody has to walk Dashboard → module → form to enter a receipt.
  */
 const ACTIONS: Action[] = [
   {
     label: "Receive cash",
-    href: "/accounts-forms/cash-receiving-voucher",
+    href: "/transactions/cash-receiving-voucher",
     icon: ArrowDownLeft,
-    modules: ["accounts-forms"],
+    modules: ["transactions"],
     tone: "in",
   },
   {
     label: "Pay cash",
-    href: "/accounts-forms/cash-payment-voucher",
+    href: "/transactions/cash-payment-voucher",
     icon: ArrowUpRight,
-    modules: ["accounts-forms"],
+    modules: ["transactions"],
     tone: "out",
   },
   {
     label: "Sale invoice",
-    href: "/brokerage/sale-invoice",
+    href: "/sales/invoices",
     icon: FileText,
-    modules: ["brokerage"],
+    modules: ["sales"],
   },
   {
-    label: "Sale invoice",
-    href: "/general/sale-invoice",
-    icon: FileText,
-    modules: ["general"],
-  },
-  {
-    label: "Purchase invoice",
-    href: "/general/purchase-invoice",
+    label: "Purchase bill",
+    href: "/purchases/bills",
     icon: ReceiptText,
-    modules: ["general"],
-  },
-  {
-    label: "Weighment slip",
-    href: "/crops/purchase-weighment",
-    icon: Scale,
-    modules: ["crops"],
+    modules: ["purchases"],
   },
   {
     label: "Journal voucher",
-    href: "/accounts-forms/journal-voucher",
+    href: "/transactions/journal-voucher",
     icon: BookOpen,
-    modules: ["accounts-forms"],
+    modules: ["transactions"],
   },
   {
-    label: "Add a party",
-    href: "/accounts-forms/party-master",
+    label: "Add a customer",
+    href: "/sales/customers",
     icon: UserPlus,
-    modules: ["accounts-forms"],
+    modules: ["sales"],
   },
 ];
 
 export function QuickActions({ allowed }: { allowed: ModuleKey[] }) {
   const set = new Set(allowed);
-  const seen = new Set<string>();
-  const actions = ACTIONS.filter((a) => {
-    if (!a.modules.some((m) => set.has(m))) return false;
-    // "Sale invoice" exists in both Brokerage and General — show one.
-    if (seen.has(a.label)) return false;
-    seen.add(a.label);
-    return true;
-  }).slice(0, 6);
+  const actions = ACTIONS.filter((a) => a.modules.some((m) => set.has(m))).slice(0, 6);
 
   if (actions.length === 0) return null;
 

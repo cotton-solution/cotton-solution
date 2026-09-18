@@ -19,7 +19,7 @@ export function TopParties({ parties }: { parties: PartyBalance[] }) {
           Largest balances
         </h2>
         <Link
-          href="/accounts-forms/party-master"
+          href="/sales/customers"
           className="text-[12px] font-medium text-brand-700 hover:text-brand-800"
         >
           All parties

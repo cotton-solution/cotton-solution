@@ -38,14 +38,14 @@ export function OwedPanel({
           }
           value={receivable}
           tone="in"
-          href="/accounts-reports/account-receivable"
+          href="/reports/account-receivable"
         />
         <Amount
           label="Payable"
           sub="Owed to vendors and growers"
           value={payable}
           tone="out"
-          href="/accounts-reports/account-payable"
+          href="/reports/account-payable"
         />
       </div>
 

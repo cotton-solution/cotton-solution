@@ -32,7 +32,7 @@ export function ActivityFeed({ items }: { items: ActivityItem[] }) {
           Recent activity
         </h2>
         <Link
-          href="/accounts-reports/daily-vouchers"
+          href="/reports/daily-vouchers"
           className="text-[12px] font-medium text-brand-700 hover:text-brand-800"
         >
           Day book

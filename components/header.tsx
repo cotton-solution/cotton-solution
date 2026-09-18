@@ -58,7 +58,7 @@ export function Header() {
   const canManageUsers = visibleModuleKeys(business?.category, {
     isOwner,
     moduleKeys: membership ? effectiveModuleKeys(membership) : [],
-  }).includes("user-access");
+  }).includes("settings");
 
   async function handleLogOut() {
     setMenuOpen(false);

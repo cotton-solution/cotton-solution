@@ -5,37 +5,41 @@ export type MemberRole = "admin" | "accountant" | "trader" | "viewer" | "custom"
 export const ROLE_LABELS: Record<MemberRole, string> = {
   admin: "Admin",
   accountant: "Accountant",
-  trader: "Trader",
+  trader: "Sales & Purchases",
   viewer: "Viewer",
   custom: "Custom",
 };
 
 export const ROLE_DESCRIPTIONS: Record<MemberRole, string> = {
-  admin: "Full access to every module, including User Access",
-  accountant: "Accounts Forms, Accounts Reports",
-  trader: "Trader module + Accounts Reports",
-  viewer: "Read-only style access to Accounts Reports",
+  admin: "Full access to every module, including Settings",
+  accountant: "Transactions, Banking, Expenses & Financial Reports",
+  trader: "Sales & Receivables, Purchases & Payables",
+  viewer: "Read-only style access to Financial Reports",
   custom: "Pick exactly which modules this person can open",
 };
 
 /** Modules each built-in role gets by default. "custom" has no default —
- *  the owner picks module_keys by hand for that person instead. */
+ *  the owner picks module_keys by hand for that person instead.
+ *  (The "trader" role key is kept as-is for backward compatibility with
+ *  existing staff logins/DB rows — it now means "Sales & Purchases".) */
 export const DEFAULT_ROLE_MODULES: Record<
   Exclude<MemberRole, "custom">,
   ModuleKey[]
 > = {
   admin: [
-    "accounts-forms",
-    "accounts-reports",
-    "brokerage",
-    "general",
-    "crops",
-    "trader",
-    "user-access",
+    "dashboard",
+    "transactions",
+    "banking",
+    "sales",
+    "purchases",
+    "inventory",
+    "expenses",
+    "reports",
+    "settings",
   ],
-  accountant: ["accounts-forms", "accounts-reports"],
-  trader: ["trader", "accounts-reports"],
-  viewer: ["accounts-reports"],
+  accountant: ["dashboard", "transactions", "banking", "expenses", "reports"],
+  trader: ["dashboard", "sales", "purchases", "reports"],
+  viewer: ["dashboard", "reports"],
 };
 
 export type TeamMember = {

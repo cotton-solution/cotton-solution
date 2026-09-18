@@ -19,14 +19,16 @@ type TypeFilter = "all" | "sale" | "purchase";
 export function InvoiceList({
   category,
   title = "Invoices",
+  defaultTypeFilter = "all",
 }: {
   category: InvoiceCategory;
   title?: string;
+  defaultTypeFilter?: TypeFilter;
 }) {
   const { parties } = usePartyDirectory();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(defaultTypeFilter);
   const [selected, setSelected] = useState<Row | null>(null);
 
   useEffect(() => {
