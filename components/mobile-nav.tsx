@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, LogOut, Sprout } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { modulesForUser } from "@/lib/modules";
 import { effectiveModuleKeys } from "@/lib/team-data";
 import { BUSINESS_CATEGORY_LABELS } from "@/lib/supabase/businesses";
 import { useAuth } from "@/components/auth-provider";
 import { useBusiness } from "@/components/business-provider";
-import { useSiteSettings } from "@/components/site-settings-provider";
+import { BusinessLogo, useBusinessIdentity } from "@/components/business-mark";
 import { NavTree } from "@/components/nav-tree";
 
 export function MobileNav() {
@@ -17,7 +17,7 @@ export function MobileNav() {
   const router = useRouter();
   const { signOut } = useAuth();
   const { business, isOwner, membership } = useBusiness();
-  const { settings } = useSiteSettings();
+  const identity = useBusinessIdentity();
 
   const modules = modulesForUser(business?.category, {
     isOwner,
@@ -26,8 +26,7 @@ export function MobileNav() {
   const categoryLabel = business?.category
     ? BUSINESS_CATEGORY_LABELS[business.category]
     : null;
-  const displayName = business?.name || settings.siteName;
-  const displayLogo = business?.logoUrl || settings.logoUrl;
+  const displayName = identity.name;
 
   async function handleLogOut() {
     setOpen(false);
@@ -60,18 +59,11 @@ export function MobileNav() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 min-w-0"
               >
-                {displayLogo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={displayLogo}
-                    alt={displayName}
-                    className="h-9 w-9 rounded-lg object-cover"
-                  />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-                    <Sprout size={18} />
-                  </div>
-                )}
+                <BusinessLogo
+                  name={identity.name}
+                  logoUrl={identity.logoUrl}
+                  loading={identity.loading}
+                />
                 <div className="leading-tight min-w-0">
                   <p className="text-sm font-semibold text-slate-900 truncate">
                     {displayName}

@@ -193,19 +193,13 @@ export default function UserAccessPage() {
         </p>
       </div>
 
-      <div
-        className={cn(
-          "flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2",
-          isSupabaseConfigured
-            ? "bg-emerald-50 text-emerald-700"
-            : "bg-amber-50 text-amber-700"
-        )}
-      >
-        <Database size={14} />
-        {isSupabaseConfigured
-          ? "Connected to Supabase — new logins are real and can sign in immediately."
-          : "Demo mode — invites are in-memory only and don't create real logins. Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY to persist data (see README)."}
-      </div>
+      {/* Demo notice only — nothing about the backend is shown to real customers. */}
+      {!isSupabaseConfigured && (
+        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-amber-50 text-amber-700">
+          <Database size={14} />
+          Demo mode — invites are in-memory only and don't create real logins. Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY to persist data (see README).
+        </div>
+      )}
 
       {errorMsg && (
         <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">

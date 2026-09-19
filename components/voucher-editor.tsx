@@ -7,12 +7,12 @@ import {
   CircleAlert,
   CircleCheck,
   Printer,
+  Download,
   CornerDownLeft,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { DataModeBanner } from "@/components/data-mode-banner";
 import { AccountPicker } from "@/components/account-picker";
 import { AccountSearchModal } from "@/components/account-search-modal";
 import { VoucherOpenDialog } from "@/components/voucher-open-dialog";
@@ -29,6 +29,15 @@ import {
   type VoucherLineDraft,
   type VoucherType,
 } from "@/lib/supabase/vouchers";
+import { useAuth } from "@/components/auth-provider";
+import { useBusiness } from "@/components/business-provider";
+import {
+  buildVoucherPdf,
+  downloadPdf,
+  loadLogoAsPng,
+  printPdf,
+  type VoucherPdfData,
+} from "@/lib/voucher-pdf";
 import { formatAmount } from "@/lib/format";
 
 /** The chart-of-accounts code every fresh business is seeded with for
@@ -83,6 +92,9 @@ export function VoucherEditor({
   fixedLineLabel?: string;
 }) {
   const { accounts, loading: accountsLoading } = useLedgerAccounts();
+  const { business } = useBusiness();
+  const { user } = useAuth();
+  const [outputBusy, setOutputBusy] = useState<"print" | "pdf" | null>(null);
 
   const [voucherNo, setVoucherNo] = useState("…");
   const [numberReady, setNumberReady] = useState(false);
@@ -271,24 +283,29 @@ export function VoucherEditor({
     return rows;
   }
 
-  async function handleSave() {
-    setError(null);
+  /** Shared by Save, Print and Download PDF — a voucher that can't be
+   *  saved can't be printed either. */
+  function validationError(): string | null {
     if (mode === "single" && anchor.kind === "bank" && !bankRef) {
-      setError("Choose the bank account this voucher posts against.");
-      return;
+      return "Choose the bank account this voucher posts against.";
     }
     if (!lines.length) {
-      setError("Add at least one row (fill the entry bar and press Enter).");
-      return;
+      return "Add at least one row (fill the entry bar and press Enter).";
     }
     if (mode === "dual" && !balanced) {
-      setError(
-        `Debit and Credit don't match — Dr Rs ${formatAmount(dualDebit)}, Cr Rs ${formatAmount(dualCredit)}.`
-      );
-      return;
+      return `Debit and Credit don't match — Dr Rs ${formatAmount(dualDebit)}, Cr Rs ${formatAmount(dualCredit)}.`;
     }
     if (withholdingTax && !whtAccountRef) {
-      setError("Choose the Withholding Tax Payable account for this voucher.");
+      return "Choose the Withholding Tax Payable account for this voucher.";
+    }
+    return null;
+  }
+
+  async function handleSave() {
+    setError(null);
+    const problem = validationError();
+    if (problem) {
+      setError(problem);
       return;
     }
 
@@ -399,6 +416,91 @@ export function VoucherEditor({
     );
   }
 
+  /** Builds the formatted voucher PDF from what's on screen right now
+   *  (the real posting lines, including the automatic cash/bank and
+   *  withholding-tax legs, debits first). */
+  async function buildPdfBytes(): Promise<Uint8Array | null> {
+    setError(null);
+    const problem = validationError();
+    if (problem) {
+      setError(problem);
+      return null;
+    }
+    const finalLines = buildFinalLines();
+    if (!finalLines) {
+      setError("Add at least one row (fill the entry bar and press Enter).");
+      return null;
+    }
+
+    const describe = (ref: string) => {
+      const found = accounts.find((a: LedgerAccount) => a.ref === ref);
+      return {
+        no: found?.sublabel ?? "",
+        name: found?.label ?? (ref === CASH_REF ? "Cash in Hand" : ref),
+      };
+    };
+    const pdfLines = finalLines
+      .map((l) => {
+        const d = describe(l.ref);
+        return {
+          accountNo: d.no,
+          accountName: d.name,
+          narration: l.narration,
+          debit: l.debit,
+          credit: l.credit,
+        };
+      })
+      .sort((a, b) => Number(b.debit > 0) - Number(a.debit > 0));
+
+    const payload: VoucherPdfData = {
+      business: {
+        name: business?.name || "Business",
+        address: business?.address,
+        phone: business?.contactPhone,
+        email: business?.contactEmail,
+        taxNumber: business?.taxNumber,
+      },
+      logoPng: await loadLogoAsPng(business?.logoUrl),
+      title,
+      voucherNo,
+      date,
+      chequeNo: showCheque ? chequeNo : null,
+      chequeDate: showCheque ? chequeDate : null,
+      lines: pdfLines,
+      preparedBy: user?.name || user?.email || null,
+    };
+    return buildVoucherPdf(payload);
+  }
+
+  async function handlePrint() {
+    setOutputBusy("print");
+    try {
+      const bytes = await buildPdfBytes();
+      if (bytes) printPdf(bytes);
+    } catch (e) {
+      console.error("Voucher print failed:", e);
+      setError("Couldn't prepare the voucher for printing. Please try again.");
+    } finally {
+      setOutputBusy(null);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    setOutputBusy("pdf");
+    try {
+      const bytes = await buildPdfBytes();
+      if (bytes) {
+        const safe = `${title}-${voucherNo}`.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        downloadPdf(bytes, `${safe}.pdf`);
+      }
+    } catch (e) {
+      console.error("Voucher PDF failed:", e);
+      setError("Couldn't create the PDF. Please try again.");
+    } finally {
+      setOutputBusy(null);
+    }
+  }
+
   async function handleDelete() {
     if (!editingId) return;
     if (!confirmingDelete) {
@@ -473,18 +575,8 @@ export function VoucherEditor({
               <CircleCheck size={13} /> Saved
             </span>
           )}
-          <button
-            type="button"
-            onClick={() => window.print()}
-            title="Print"
-            className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:text-slate-700 hover:border-slate-300 transition-colors"
-          >
-            <Printer size={14} />
-          </button>
         </div>
       </div>
-
-      <DataModeBanner />
 
       {error && (
         <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">
@@ -509,15 +601,6 @@ export function VoucherEditor({
                 loading={accountsLoading}
                 placeholder="Search your bank account head…"
               />
-            </div>
-          )}
-
-          {anchor.kind === "cash" && (
-            <div className="sm:col-span-2">
-              <Label>Cash Account {anchor.side === "debit" ? "(Dr, automatic)" : "(Cr, automatic)"}</Label>
-              <div className="h-10 sm:h-11 rounded-lg border border-slate-200 bg-slate-50 px-3 flex items-center text-sm text-slate-600">
-                Cash in Hand
-              </div>
             </div>
           )}
 
@@ -703,7 +786,7 @@ export function VoucherEditor({
         </div>
       </div>
 
-      {/* Toolbar: the 5 controls, in order */}
+      {/* Toolbar: Save / Clear / Open / Delete / Close, then Print & PDF */}
       <div className="flex flex-wrap gap-2">
         <Button onClick={handleSave} disabled={saving || !numberReady}>
           {saving ? "Saving…" : "Save"}
@@ -724,6 +807,14 @@ export function VoucherEditor({
         </Button>
         <Button variant="secondary" onClick={handleClose} disabled={saving}>
           Close
+        </Button>
+        <Button variant="secondary" onClick={handlePrint} disabled={saving || !!outputBusy}>
+          <Printer size={15} />
+          {outputBusy === "print" ? "Preparing…" : "Print"}
+        </Button>
+        <Button variant="secondary" onClick={handleDownloadPdf} disabled={saving || !!outputBusy}>
+          <Download size={15} />
+          {outputBusy === "pdf" ? "Preparing…" : "Download PDF"}
         </Button>
       </div>
 
