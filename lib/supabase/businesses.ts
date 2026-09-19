@@ -34,6 +34,7 @@ export type Business = {
   taxNumber: string | null;
   address: string | null;
   website: string | null;
+  logoUrl: string | null;
 };
 
 type BusinessRow = {
@@ -53,6 +54,7 @@ type BusinessRow = {
   tax_number: string | null;
   address: string | null;
   website: string | null;
+  logo_url: string | null;
 };
 
 function rowToBusiness(row: BusinessRow): Business {
@@ -73,11 +75,12 @@ function rowToBusiness(row: BusinessRow): Business {
     taxNumber: row.tax_number,
     address: row.address,
     website: row.website,
+    logoUrl: row.logo_url,
   };
 }
 
 const BUSINESS_COLUMNS =
-  "id, owner_id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at, currency, tax_number, address, website";
+  "id, owner_id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at, currency, tax_number, address, website, logo_url";
 
 /** The signed-in customer's own business (tenant) record, or null. */
 export async function fetchMyBusiness(): Promise<Business | null> {
@@ -171,6 +174,7 @@ export async function updateBusinessProfile(
     taxNumber?: string | null;
     address?: string | null;
     website?: string | null;
+    logoUrl?: string | null;
   }
 ): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
@@ -191,6 +195,7 @@ export async function updateBusinessProfile(
       ...(updates.taxNumber !== undefined ? { tax_number: updates.taxNumber } : {}),
       ...(updates.address !== undefined ? { address: updates.address } : {}),
       ...(updates.website !== undefined ? { website: updates.website } : {}),
+      ...(updates.logoUrl !== undefined ? { logo_url: updates.logoUrl } : {}),
     })
     .eq("id", businessId);
 
