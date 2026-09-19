@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Trash2, CircleAlert, CircleCheck, Printer } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  MoreHorizontal,
+  Trash2,
+  CircleAlert,
+  CircleCheck,
+  Printer,
+  CornerDownLeft,
+} from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataModeBanner } from "@/components/data-mode-banner";
 import { AccountPicker } from "@/components/account-picker";
+import { AccountSearchModal } from "@/components/account-search-modal";
 import { VoucherOpenDialog } from "@/components/voucher-open-dialog";
 import {
   useLedgerAccounts,
@@ -30,25 +38,15 @@ import { formatAmount } from "@/lib/format";
 const CASH_ACCOUNT_CODE = "1010001";
 const CASH_REF = coaRef(CASH_ACCOUNT_CODE);
 
-type EditableLine = {
+type CommittedLine = {
   id: string;
   ref: string;
+  label: string;
   narration: string;
-  amount: number; // used in "single" mode
-  debit: number; // used in "dual" mode
-  credit: number; // used in "dual" mode
+  amount: number; // "single" mode
+  debit: number; // "dual" mode
+  credit: number; // "dual" mode
 };
-
-function blankLine(): EditableLine {
-  return {
-    id: Math.random().toString(36).slice(2, 9),
-    ref: "",
-    narration: "",
-    amount: 0,
-    debit: 0,
-    credit: 0,
-  };
-}
 
 export type VoucherAnchor =
   | { kind: "cash"; side: "debit" | "credit" }
@@ -71,16 +69,16 @@ export function VoucherEditor({
   title: string;
   numberPrefix: string;
   anchor: VoucherAnchor;
-  /** "single": one Account+Narration+Amount per row, side implied by
-   *  the anchor. "dual": Journal-style — each row picks its own
-   *  Debit or Credit amount, no anchor. */
+  /** "single": entry bar posts one Account+Narration+Amount per row,
+   *  side implied by the anchor. "dual": Journal-style — each row
+   *  picks its own Debit or Credit amount, no anchor. */
   mode: "single" | "dual";
   /** Default narration text suggested when an account is picked. */
   narrationTemplate: (accountLabel: string) => string;
   withholdingTax?: boolean;
   showCheque?: boolean;
   /** Contra Voucher: the line side is always this one account (Cash) —
-   *  shown as a static label instead of a picker. */
+   *  shown as a locked label in the entry bar instead of a search. */
   fixedLineRef?: string;
   fixedLineLabel?: string;
 }) {
@@ -95,11 +93,21 @@ export function VoucherEditor({
   const [bankRef, setBankRef] = useState(""); // anchor account for kind:"bank"
   const [whtPercent, setWhtPercent] = useState(4.5);
   const [whtAccountRef, setWhtAccountRef] = useState("");
-  const [lines, setLines] = useState<EditableLine[]>(() => [
-    fixedLineRef
-      ? { ...blankLine(), ref: fixedLineRef, narration: narrationTemplate(fixedLineLabel ?? "") }
-      : blankLine(),
-  ]);
+  const [lines, setLines] = useState<CommittedLine[]>([]);
+
+  // ---- entry bar (the one row you fill in, then commit to the grid) ----
+  const [entryRef, setEntryRef] = useState(fixedLineRef ?? "");
+  const [entryLabel, setEntryLabel] = useState(fixedLineLabel ?? "");
+  const [entryNarration, setEntryNarration] = useState("");
+  const [entryAmount, setEntryAmount] = useState(0);
+  const [entryDebit, setEntryDebit] = useState(0);
+  const [entryCredit, setEntryCredit] = useState(0);
+  const [entryEditingId, setEntryEditingId] = useState<string | null>(null);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const narrationInputRef = useRef<HTMLInputElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -119,12 +127,19 @@ export function VoucherEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function resetEntryBar() {
+    setEntryRef(fixedLineRef ?? "");
+    setEntryLabel(fixedLineLabel ?? "");
+    setEntryNarration(fixedLineRef ? narrationTemplate(fixedLineLabel ?? "") : "");
+    setEntryAmount(0);
+    setEntryDebit(0);
+    setEntryCredit(0);
+    setEntryEditingId(null);
+  }
+
   function resetForm() {
-    setLines([
-      fixedLineRef
-        ? { ...blankLine(), ref: fixedLineRef, narration: narrationTemplate(fixedLineLabel ?? "") }
-        : blankLine(),
-    ]);
+    setLines([]);
+    resetEntryBar();
     setChequeNo("");
     setChequeDate("");
     setDate(new Date().toISOString().slice(0, 10));
@@ -142,56 +157,91 @@ export function VoucherEditor({
     await loadNextNumber();
   }
 
-  function updateLine(id: string, patch: Partial<EditableLine>) {
-    setLines((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-    setSaved(false);
-  }
-
   function accountLabel(ref: string): string {
     return accounts.find((a: LedgerAccount) => a.ref === ref)?.label ?? ref;
   }
 
-  function handlePickAccount(id: string, ref: string, account: LedgerAccount | null) {
-    setLines((ls) =>
-      ls.map((l) =>
-        l.id === id
-          ? {
-              ...l,
-              ref,
-              narration:
-                !l.narration.trim() && account
-                  ? narrationTemplate(account.label)
-                  : l.narration,
-            }
-          : l
-      )
-    );
+  function handlePickAccount(account: LedgerAccount) {
+    setEntryRef(account.ref);
+    setEntryLabel(account.label);
+    if (!entryNarration.trim()) setEntryNarration(narrationTemplate(account.label));
+    setAccountModalOpen(false);
+    setTimeout(() => narrationInputRef.current?.focus(), 0);
+  }
+
+  /** Commit the entry bar as a new row in the grid, then reset the
+   *  entry bar so the next row can be typed straight away. */
+  function commitEntry() {
+    setError(null);
+    if (!entryRef) {
+      setError("Choose an account first.");
+      accountTriggerRef.current?.focus();
+      return;
+    }
+    const amountOk = mode === "single" ? entryAmount > 0 : entryDebit > 0 || entryCredit > 0;
+    if (!amountOk) {
+      setError(mode === "single" ? "Enter an amount." : "Enter a Debit or a Credit amount.");
+      amountInputRef.current?.focus();
+      return;
+    }
+
+    const row: CommittedLine = {
+      id: entryEditingId ?? Math.random().toString(36).slice(2, 9),
+      ref: entryRef,
+      label: entryLabel,
+      narration: entryNarration,
+      amount: entryAmount,
+      debit: entryDebit,
+      credit: entryCredit,
+    };
+
+    setLines((ls) => {
+      if (entryEditingId) return ls.map((l) => (l.id === entryEditingId ? row : l));
+      return [...ls, row];
+    });
+    setSaved(false);
+    resetEntryBar();
+    setTimeout(() => accountTriggerRef.current?.focus(), 0);
+  }
+
+  function editRow(l: CommittedLine) {
+    setEntryEditingId(l.id);
+    setEntryRef(l.ref);
+    setEntryLabel(l.label);
+    setEntryNarration(l.narration);
+    setEntryAmount(l.amount);
+    setEntryDebit(l.debit);
+    setEntryCredit(l.credit);
+    setTimeout(() => narrationInputRef.current?.focus(), 0);
+  }
+
+  function removeRow(id: string) {
+    setLines((ls) => ls.filter((l) => l.id !== id));
+    if (entryEditingId === id) resetEntryBar();
     setSaved(false);
   }
 
-  const activeLines = lines.filter((l) => l.ref && (l.amount > 0 || l.debit > 0 || l.credit > 0));
-  const singleTotal = activeLines.reduce((s, l) => s + (l.amount || 0), 0);
-  const dualDebit = activeLines.reduce((s, l) => s + (l.debit || 0), 0);
-  const dualCredit = activeLines.reduce((s, l) => s + (l.credit || 0), 0);
+  const singleTotal = lines.reduce((s, l) => s + l.amount, 0);
+  const dualDebit = lines.reduce((s, l) => s + l.debit, 0);
+  const dualCredit = lines.reduce((s, l) => s + l.credit, 0);
   const whtAmount = withholdingTax ? Math.round((singleTotal * whtPercent) / 100) : 0;
   const netCash = singleTotal - whtAmount;
   const balanced = mode === "dual" ? Math.abs(dualDebit - dualCredit) < 0.01 : true;
 
   function buildFinalLines(): VoucherLineDraft[] | null {
     if (mode === "dual") {
-      if (!activeLines.length) return null;
-      return activeLines.map((l) => ({
+      if (!lines.length) return null;
+      return lines.map((l) => ({
         ref: l.ref,
         narration: l.narration,
-        debit: l.debit || 0,
-        credit: l.credit || 0,
+        debit: l.debit,
+        credit: l.credit,
       }));
     }
 
-    // single mode: user rows are one side, anchor is the automatic other side
-    if (!activeLines.length) return null;
+    if (!lines.length) return null;
     const userSide = anchor.kind === "none" ? "debit" : anchor.side === "debit" ? "credit" : "debit";
-    const rows: VoucherLineDraft[] = activeLines.map((l) => ({
+    const rows: VoucherLineDraft[] = lines.map((l) => ({
       ref: l.ref,
       narration: l.narration,
       debit: userSide === "debit" ? l.amount : 0,
@@ -210,9 +260,6 @@ export function VoucherEditor({
       });
 
       if (withholdingTax && whtAmount > 0 && whtAccountRef) {
-        // WHT payable sits on the same side as the anchor — it's an
-        // amount the business now owes the tax authority instead of
-        // paying out, same direction as "money not going out in cash".
         rows.push({
           ref: whtAccountRef,
           narration: `Withholding tax @ ${whtPercent}%`,
@@ -230,8 +277,8 @@ export function VoucherEditor({
       setError("Choose the bank account this voucher posts against.");
       return;
     }
-    if (!activeLines.length) {
-      setError("Add at least one line with an account and an amount.");
+    if (!lines.length) {
+      setError("Add at least one row (fill the entry bar and press Enter).");
       return;
     }
     if (mode === "dual" && !balanced) {
@@ -247,14 +294,11 @@ export function VoucherEditor({
 
     const finalLines = buildFinalLines();
     if (!finalLines) {
-      setError("Add at least one line with an account and an amount.");
+      setError("Add at least one row (fill the entry bar and press Enter).");
       return;
     }
 
-    const combinedNarration = activeLines
-      .map((l) => l.narration)
-      .filter(Boolean)
-      .join("; ");
+    const combinedNarration = lines.map((l) => l.narration).filter(Boolean).join("; ");
 
     setSaving(true);
     const { error: err } = await saveVoucherWithLines(
@@ -281,8 +325,6 @@ export function VoucherEditor({
 
   async function handleClear() {
     if (editingId) {
-      // Clearing a previously-saved, now-opened voucher deletes it —
-      // its number comes back as a blank draft, ready for fresh entry.
       setSaving(true);
       await deleteVoucherCascade(editingId);
       setSaving(false);
@@ -311,29 +353,26 @@ export function VoucherEditor({
     setChequeDate(full.header.chequeDate ?? "");
     setError(null);
     setSaved(false);
+    resetEntryBar();
 
     if (mode === "dual") {
       setLines(
-        full.lines.length
-          ? full.lines.map((l) => ({
-              id: l.id,
-              ref: l.ref,
-              narration: l.narration,
-              amount: 0,
-              debit: l.debit,
-              credit: l.credit,
-            }))
-          : [blankLine()]
+        full.lines.map((l) => ({
+          id: l.id,
+          ref: l.ref,
+          label: accountLabel(l.ref),
+          narration: l.narration,
+          amount: 0,
+          debit: l.debit,
+          credit: l.credit,
+        }))
       );
       return;
     }
 
-    // Drop the automatic anchor / WHT row(s) — only show the
-    // user-editable side back in the grid; they're re-derived on save.
     let resolvedBankRef = bankRef;
     if (anchor.kind === "bank") {
       const guess = full.lines.find((l) => l.ref.startsWith("coa:") && !l.narration.startsWith("Withholding tax @"));
-      // Prefer the line whose amount matches the total of the others (the anchor).
       const total = full.lines.reduce((s, l) => s + Math.max(l.debit, l.credit), 0) / 2;
       const anchorGuess = full.lines.find((l) => Math.abs(Math.max(l.debit, l.credit) - total) < 0.01) ?? guess;
       if (anchorGuess) resolvedBankRef = anchorGuess.ref;
@@ -351,6 +390,7 @@ export function VoucherEditor({
       (userLines.length ? userLines : full.lines).map((l) => ({
         id: l.id,
         ref: l.ref,
+        label: accountLabel(l.ref),
         narration: l.narration,
         amount: l.debit || l.credit,
         debit: 0,
@@ -376,6 +416,39 @@ export function VoucherEditor({
     setConfirmingDelete(false);
     await backToNewVoucher();
   }
+
+  const entryAmountField =
+    mode === "single" ? (
+      <Input
+        ref={amountInputRef}
+        type="number"
+        placeholder="Amount"
+        className="text-right"
+        value={entryAmount || ""}
+        onChange={(e) => setEntryAmount(Number(e.target.value))}
+        onKeyDown={(e) => e.key === "Enter" && commitEntry()}
+      />
+    ) : (
+      <div className="grid grid-cols-2 gap-1.5">
+        <Input
+          ref={amountInputRef}
+          type="number"
+          placeholder="Dr"
+          className="text-right"
+          value={entryDebit || ""}
+          onChange={(e) => { setEntryDebit(Number(e.target.value)); setEntryCredit(0); }}
+          onKeyDown={(e) => e.key === "Enter" && commitEntry()}
+        />
+        <Input
+          type="number"
+          placeholder="Cr"
+          className="text-right"
+          value={entryCredit || ""}
+          onChange={(e) => { setEntryCredit(Number(e.target.value)); setEntryDebit(0); }}
+          onKeyDown={(e) => e.key === "Enter" && commitEntry()}
+        />
+      </div>
+    );
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -486,88 +559,114 @@ export function VoucherEditor({
           )}
         </div>
 
-        {/* Line grid */}
-        <div>
-          <div className="hidden sm:grid grid-cols-[1fr_1fr_120px_36px] gap-2 px-1 pb-1 text-[11px] font-medium text-slate-400 uppercase tracking-wide">
-            <span>Account</span>
-            <span>Narration</span>
-            <span className="text-right">{mode === "dual" ? "Dr / Cr" : "Amount"}</span>
-            <span />
-          </div>
-          <div className="space-y-2">
-            {lines.map((l) => (
-              <div
-                key={l.id}
-                className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_36px] gap-2 sm:items-center"
+        {/* Entry bar — fill this, press Enter, it drops into the grid below */}
+        <div className="rounded-lg border border-brand-600/30 bg-brand-50/40 p-3">
+          <p className="text-[11px] font-medium text-brand-700 uppercase tracking-wide mb-2">
+            {entryEditingId ? "Editing row — press Enter to update" : "New entry"}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr_1fr_120px] gap-2 sm:items-center">
+            <div>
+              <span className="block text-[11px] text-slate-400 mb-0.5 sm:hidden">A/c No</span>
+              <button
+                ref={accountTriggerRef}
+                type="button"
+                disabled={!!fixedLineRef}
+                onClick={() => setAccountModalOpen(true)}
+                className="w-full h-10 sm:h-11 rounded-lg border border-slate-300 bg-white px-3 flex items-center justify-between gap-1 text-left text-sm disabled:bg-slate-50 disabled:text-slate-500 hover:border-brand-600/50 transition-colors"
               >
-                {fixedLineRef ? (
-                  <div className="h-10 sm:h-11 rounded-lg border border-slate-200 bg-slate-50 px-3 flex items-center text-sm text-slate-600">
-                    {fixedLineLabel}
-                  </div>
-                ) : (
-                  <AccountPicker
-                    accounts={accounts}
-                    value={l.ref}
-                    onChange={(ref, acc) => handlePickAccount(l.id, ref, acc)}
-                    loading={accountsLoading}
-                  />
-                )}
-                <Input
-                  placeholder="Narration"
-                  value={l.narration}
-                  onChange={(e) => updateLine(l.id, { narration: e.target.value })}
-                />
-                {mode === "single" ? (
-                  <Input
-                    type="number"
-                    placeholder="Amount"
-                    className="text-right"
-                    value={l.amount || ""}
-                    onChange={(e) => updateLine(l.id, { amount: Number(e.target.value) })}
-                  />
-                ) : (
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <Input
-                      type="number"
-                      placeholder="Dr"
-                      className="text-right"
-                      value={l.debit || ""}
-                      onChange={(e) => updateLine(l.id, { debit: Number(e.target.value), credit: 0 })}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Cr"
-                      className="text-right"
-                      value={l.credit || ""}
-                      onChange={(e) => updateLine(l.id, { credit: Number(e.target.value), debit: 0 })}
-                    />
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.id !== l.id) : ls))}
-                  className="h-10 flex items-center justify-center text-slate-400 hover:text-red-600"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <span className={entryRef ? "text-slate-900 figure" : "text-slate-400"}>
+                  {entryRef ? accounts.find((a) => a.ref === entryRef)?.sublabel ?? "—" : "A/c No…"}
+                </span>
+                {!fixedLineRef && <MoreHorizontal size={14} className="text-slate-400 shrink-0" />}
+              </button>
+            </div>
+            <div>
+              <span className="block text-[11px] text-slate-400 mb-0.5 sm:hidden">A/c Name</span>
+              <div className="h-10 sm:h-11 rounded-lg border border-slate-200 bg-slate-50 px-3 flex items-center text-sm text-slate-700 truncate">
+                {entryLabel || "—"}
               </div>
-            ))}
+            </div>
+            <div>
+              <span className="block text-[11px] text-slate-400 mb-0.5 sm:hidden">Narration</span>
+              <Input
+                ref={narrationInputRef}
+                placeholder="Narration"
+                value={entryNarration}
+                onChange={(e) => setEntryNarration(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && amountInputRef.current?.focus()}
+              />
+            </div>
+            <div>
+              <span className="block text-[11px] text-slate-400 mb-0.5 sm:hidden">
+                {mode === "dual" ? "Dr / Cr" : "Amount"}
+              </span>
+              {entryAmountField}
+            </div>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className="mt-2"
-            onClick={() =>
-              setLines((ls) => [
-                ...ls,
-                fixedLineRef
-                  ? { ...blankLine(), ref: fixedLineRef, narration: narrationTemplate(fixedLineLabel ?? "") }
-                  : blankLine(),
-              ])
-            }
-          >
-            <Plus size={14} /> Add Row
-          </Button>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-[11px] text-slate-400 flex items-center gap-1">
+              <CornerDownLeft size={11} /> Press Enter in Amount to add the row
+            </p>
+            <Button type="button" variant="secondary" onClick={commitEntry}>
+              {entryEditingId ? "Update Row" : "Add Row"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Grid of committed rows */}
+        <div className="rounded-lg border border-slate-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="text-left font-medium px-3 py-2 w-28">A/c No</th>
+                <th className="text-left font-medium px-3 py-2">A/c Name</th>
+                <th className="text-left font-medium px-3 py-2">Narration</th>
+                <th className="text-right font-medium px-3 py-2 w-28">
+                  {mode === "dual" ? "Debit" : "Amount"}
+                </th>
+                {mode === "dual" && <th className="text-right font-medium px-3 py-2 w-28">Credit</th>}
+                <th className="w-10" />
+              </tr>
+            </thead>
+            <tbody>
+              {lines.length === 0 ? (
+                <tr>
+                  <td colSpan={mode === "dual" ? 6 : 5} className="text-center text-slate-400 py-6 text-sm">
+                    No rows yet — fill the entry bar above.
+                  </td>
+                </tr>
+              ) : (
+                lines.map((l) => (
+                  <tr
+                    key={l.id}
+                    onClick={() => editRow(l)}
+                    className={`border-t border-slate-100 cursor-pointer ${
+                      entryEditingId === l.id ? "bg-brand-50" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="px-3 py-2 text-slate-500 figure">{accounts.find((a) => a.ref === l.ref)?.sublabel ?? ""}</td>
+                    <td className="px-3 py-2 text-slate-900">{l.label}</td>
+                    <td className="px-3 py-2 text-slate-500 truncate max-w-[220px]">{l.narration}</td>
+                    <td className="px-3 py-2 text-right figure font-medium">
+                      Rs {formatAmount(mode === "dual" ? l.debit : l.amount)}
+                    </td>
+                    {mode === "dual" && (
+                      <td className="px-3 py-2 text-right figure font-medium">Rs {formatAmount(l.credit)}</td>
+                    )}
+                    <td className="px-2 py-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); removeRow(l.id); }}
+                        className="text-slate-300 hover:text-red-600"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Totals */}
@@ -575,7 +674,7 @@ export function VoucherEditor({
           {mode === "single" ? (
             <>
               <div className="flex justify-between text-slate-600">
-                <span>Total</span>
+                <span>Total Amount</span>
                 <span className="figure font-medium text-slate-900">Rs {formatAmount(singleTotal)}</span>
               </div>
               {withholdingTax && (
@@ -594,7 +693,7 @@ export function VoucherEditor({
           ) : (
             <div className="flex items-center justify-between">
               <span className={`figure font-medium ${balanced ? "text-slate-900" : "text-money-out"}`}>
-                Dr Rs {formatAmount(dualDebit)} &nbsp;·&nbsp; Cr Rs {formatAmount(dualCredit)}
+                Total Debit Rs {formatAmount(dualDebit)} &nbsp;·&nbsp; Total Credit Rs {formatAmount(dualCredit)}
               </span>
               {!balanced && (
                 <span className="text-xs font-medium text-money-out">Not balanced yet</span>
@@ -627,6 +726,14 @@ export function VoucherEditor({
           Close
         </Button>
       </div>
+
+      {accountModalOpen && (
+        <AccountSearchModal
+          accounts={accounts}
+          onSelect={handlePickAccount}
+          onClose={() => setAccountModalOpen(false)}
+        />
+      )}
 
       {openDialogVisible && (
         <VoucherOpenDialog
