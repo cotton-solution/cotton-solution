@@ -36,13 +36,14 @@ Then open http://localhost:3000
    invoices, etc.), enables Row Level Security scoped per business, and
    sets up the triggers that automatically create and seed a new
    business the moment someone signs up.
-2b. Run `supabase/migration_5_team_access.sql`, `migration_6_new_vouchers.sql`
-   and `migration_7_generic_accounting.sql`, in that order, in the same
-   SQL Editor — they add team/staff logins, the newer voucher types, and
+2b. Run `supabase/migration_5_team_access.sql`, `migration_6_new_vouchers.sql`,
+   `migration_7_generic_accounting.sql` and
+   `migration_8_voucher_line_items.sql`, in that order, in the same
+   SQL Editor — they add team/staff logins, the newer voucher types,
    the Banking / Quotations / Purchase Orders / Inventory / Expenses /
-   Company Profile tables the 9-module menu needs. (A brand-new project
-   just needs `schema.sql` then these three, in order — see each
-   migration's own comment for what it adds.)
+   Company Profile tables, and multi-row voucher entry. (A brand-new
+   project just needs `schema.sql` then these four, in order — see
+   each migration's own comment for what it adds.)
 3. Copy `.env.local.example` to `.env.local` and fill in your project's
    **Project URL** and **anon public key** (Project Settings → API).
 4. Restart `npm run dev`. Every form in the app (Party Master, vouchers,
@@ -512,9 +513,69 @@ check who's an admin against).
     compatibility — the app now labels it "Sales & Purchases")
 - **Known limitation:** the new Banking, Quotations, Purchase Orders,
   Inventory and Expenses modules are full CRUD against real tables,
-  but — like invoices/vouchers — they don't yet post into the
-  `transactions` double-entry ledger, so they won't appear in Trial
-  Balance/P&L/Balance Sheet until that posting layer is built.
+  but — like invoices — they don't yet post into the double-entry
+  ledger, so they won't appear in Trial Balance/P&L/Balance Sheet
+  until that posting layer is built. Vouchers (see below) do post to
+  the ledger.
+
+**Step: Per-business branding + one voucher-entry system for every voucher type** ✅
+- **Branding is now per-business, not platform-wide.** The sidebar,
+  mobile menu and header used to always show the platform's own name
+  and logo (`site_settings` — set by the service owner in `/admin`),
+  even though this is meant to be a paid product where every business
+  sees its own identity. They now show `business.name` /
+  `business.logoUrl` (edited in **Settings → Company Profile**, which
+  gained a Logo URL field), and fall back to the platform's branding
+  only for the moment before the business record has loaded.
+  `businesses` gained a `logo_url` column (in
+  `migration_7_generic_accounting.sql`). Logo is a URL field for
+  now — pasting a link to an already-hosted image — not a file
+  upload; that would need a Supabase Storage bucket wired up.
+- Fixed a duplicate "Dashboard" sidebar entry (`nav-tree.tsx` had a
+  hardcoded Dashboard link left over from before Dashboard became a
+  real module in the registry).
+- **Every voucher type now uses one shared multi-row entry screen**
+  (`components/voucher-editor.tsx`), replacing the old one-party,
+  one-amount form:
+  - **Select Account** is a type-ahead search (`components/
+    account-picker.tsx`) merging every party (customer/vendor) and
+    every Chart of Accounts head into one searchable list — the way
+    contacts search on a phone.
+  - **Add Row** posts multiple lines in one voucher (e.g. one Cash
+    Receiving Voucher crediting several different customers).
+  - **Dr/Cr is automatic** for every voucher except Journal: Cash
+    Receiving/Payment always debit/credit "Cash in Hand"
+    automatically; Bank vouchers ask which bank ledger head is the
+    other side; Contra fixes one side to Cash and the other to a
+    chosen bank head; Journal Voucher alone stays fully manual
+    (each row picks its own Dr or Cr) since that's what a journal
+    entry is for.
+  - **Cash Payment (WHT)** keeps the gross/WHT%/net calculation, now
+    applied to the whole voucher's rows at once, and posts the
+    withheld amount to a WHT-payable account you pick per voucher.
+  - **Save** writes the voucher, flashes "Saved", and reopens a
+    blank voucher at the next number — like turning to a fresh page
+    in a paper voucher book.
+  - **Clear** resets the on-screen form. If the voucher on screen was
+    already saved (opened via "Open"), Clear deletes it from the
+    database and reopens that same voucher number blank, ready for
+    fresh entry.
+  - **Open** searches previously saved vouchers of that type by
+    number or narration and loads one back into the editor.
+  - **Delete** removes the currently opened voucher (asks for
+    confirmation first).
+  - **Close** discards any unsaved changes and returns to a blank,
+    next-numbered voucher.
+  - Every voucher — not just Journal — now writes to `voucher_lines`
+    (see `migration_8_voucher_line_items.sql`, which adds `party_id`
+    and `line_narration` to that table). `Contra`, `Crops`,
+    `Brokerage`, `Trader` and `General` no longer exist as separate
+    concepts here — this is one generic ledger-posting engine every
+    voucher type configures.
+- **If you already ran `migration_7_generic_accounting.sql`**, also
+  run **`supabase/migration_8_voucher_line_items.sql`** once in the
+  SQL editor. A fresh project just runs `schema.sql` then all the
+  migrations in order (`migration_2` → `migration_8`).
 
 ## Tech stack
 - Next.js 14 (App Router), TypeScript
