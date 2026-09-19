@@ -466,16 +466,22 @@ function EditBusinessModal({
   const [contactEmail, setContactEmail] = useState(business.contactEmail ?? "");
   const [contactPhone, setContactPhone] = useState(business.contactPhone ?? "");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
-    await updateBusinessProfile(business.id, {
-      name,
+    setSaveError(null);
+    const { error } = await updateBusinessProfile(business.id, {
+      name: name.trim(),
       contactEmail: contactEmail || null,
       contactPhone: contactPhone || null,
       category: category || null,
     });
     setSaving(false);
+    if (error) {
+      setSaveError(error);
+      return;
+    }
     onSaved();
   }
 
@@ -483,7 +489,7 @@ function EditBusinessModal({
     <Modal title="Edit business" onClose={onClose}>
       <div className="space-y-3.5">
         <div>
-          <Label htmlFor="edit-name">Business name</Label>
+          <Label htmlFor="edit-name">Business name (admin only)</Label>
           <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div>
@@ -518,6 +524,11 @@ function EditBusinessModal({
             onChange={(e) => setContactPhone(e.target.value)}
           />
         </div>
+        {saveError && (
+          <p className="text-xs font-medium text-red-700 bg-red-50 rounded-lg px-3 py-2">
+            {saveError}
+          </p>
+        )}
         <div className="flex gap-2 pt-1">
           <Button
             type="button"
