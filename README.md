@@ -536,20 +536,31 @@ check who's an admin against).
   real module in the registry).
 - **Every voucher type now uses one shared multi-row entry screen**
   (`components/voucher-editor.tsx`), replacing the old one-party,
-  one-amount form:
-  - **Select Account** is a type-ahead search (`components/
-    account-picker.tsx`) merging every party (customer/vendor) and
-    every Chart of Accounts head into one searchable list — the way
-    contacts search on a phone.
-  - **Add Row** posts multiple lines in one voucher (e.g. one Cash
-    Receiving Voucher crediting several different customers).
+  one-amount form — deliberately modelled on the classic desktop
+  accounting-software pattern (entry bar + grid), not a modern
+  always-editable table:
+  - **Select Account** ("A/c No" field's "…" button) opens a
+    **Search Accounts** popup (`components/account-search-modal.tsx`)
+    with a Name search box, an Account Type filter (Party / Asset /
+    Liability / Equity / Revenue / Expense / All), and a results
+    table — merging every party (customer/vendor) and every Chart of
+    Accounts head into one searchable list.
+  - **One entry bar, not N editable rows.** Pick an account, type a
+    narration, type an amount, press **Enter** (or "Add Row") — the
+    row drops into the grid below and the entry bar clears itself,
+    ready for the next line immediately (keyboard flow: pick account
+    → Enter moves to Narration → Enter moves to Amount → Enter commits
+    and refocuses the account field). Clicking a row already in the
+    grid loads it back into the entry bar to edit; a trash icon on
+    each row deletes it outright.
   - **Dr/Cr is automatic** for every voucher except Journal: Cash
     Receiving/Payment always debit/credit "Cash in Hand"
     automatically; Bank vouchers ask which bank ledger head is the
-    other side; Contra fixes one side to Cash and the other to a
-    chosen bank head; Journal Voucher alone stays fully manual
-    (each row picks its own Dr or Cr) since that's what a journal
-    entry is for.
+    other side; Contra fixes one side to Cash (shown as a locked
+    label in the entry bar, no search needed) and the other to a
+    chosen bank head; Journal Voucher alone stays fully manual (the
+    entry bar has both a Dr and a Cr field, only one filled per row)
+    since that's what a journal entry is for.
   - **Cash Payment (WHT)** keeps the gross/WHT%/net calculation, now
     applied to the whole voucher's rows at once, and posts the
     withheld amount to a WHT-payable account you pick per voucher.
@@ -572,6 +583,11 @@ check who's an admin against).
     `Brokerage`, `Trader` and `General` no longer exist as separate
     concepts here — this is one generic ledger-posting engine every
     voucher type configures.
+  - **Not yet built:** the reference software's live "Cash in Hand" /
+    "Account Balance" readout at the top of the voucher (would need a
+    running-balance query per account) — out of scope for now, noted
+    here so it isn't mistaken for an oversight.
+
 - **If you already ran `migration_7_generic_accounting.sql`**, also
   run **`supabase/migration_8_voucher_line_items.sql`** once in the
   SQL editor. A fresh project just runs `schema.sql` then all the
