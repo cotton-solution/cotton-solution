@@ -178,7 +178,7 @@ export async function updateBusinessProfile(
   }
 ): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("businesses")
     .update({
       ...(updates.name !== undefined ? { name: updates.name } : {}),
@@ -197,18 +197,37 @@ export async function updateBusinessProfile(
       ...(updates.website !== undefined ? { website: updates.website } : {}),
       ...(updates.logoUrl !== undefined ? { logo_url: updates.logoUrl } : {}),
     })
-    .eq("id", businessId);
+    .eq("id", businessId)
+    .select("id");
 
-  return { error: error?.message ?? null };
+  if (error) return { error: error.message };
+  // Row-level security doesn't raise an error when it blocks an update —
+  // it just matches zero rows. Treat that as "not allowed".
+  if (!data || data.length === 0) {
+    return {
+      error: "You don't have permission to change these company details.",
+    };
+  }
+  return { error: null };
 }
 
 /**
- * Self-service version of the above for the Settings → Company Profile
- * page: the signed-in owner editing their own business. Same underlying
- * call — RLS ("Owner or admin can update business") is what actually
- * decides whether the update is allowed.
+ * Self-service version for Settings → Company Profile. The company name
+ * is deliberately NOT changeable here — only a platform admin can rename
+ * a business (from the Service Admin dashboard). It's stripped here and
+ * also enforced by a database trigger (migration_9), so it can't be
+ * bypassed from the browser.
+ * Who may save the remaining fields (owner, or staff with Settings
+ * access) is decided by the row-level-security policy.
  */
-export const updateMyCompanyProfile = updateBusinessProfile;
+export function updateMyCompanyProfile(
+  businessId: string,
+  updates: Parameters<typeof updateBusinessProfile>[1]
+): Promise<{ error: string | null }> {
+  const safe = { ...updates };
+  delete safe.name;
+  return updateBusinessProfile(businessId, safe);
+}
 
 /** Admin-only: mark a business billed / unbilled for the current cycle. */
 export async function setBillingStatus(

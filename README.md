@@ -598,3 +598,25 @@ check who's an admin against).
 - Tailwind CSS
 - lucide-react icons
 - Supabase (Postgres, Auth, Row Level Security) — multi-tenant backend
+
+---
+
+## Company Profile permissions (`migration_9_company_profile_permissions.sql`)
+
+Run **`supabase/migration_9_company_profile_permissions.sql`** once in the
+Supabase SQL editor.
+
+- The **company name** can only be changed by a platform admin, from the
+  Service Admin dashboard → Edit business. Owners and staff see it as a
+  locked field. This is enforced by a database trigger, not just the UI.
+- Every other Company Profile field (logo, contact, address, tax number,
+  currency, category, website) can be edited by the business owner **or**
+  by a staff login that has the Settings module (built-in "Admin" role, or
+  a custom role with Settings ticked).
+
+## Voucher print / PDF
+
+Print and Download PDF on every voucher screen produce a half-A4
+(A5 landscape, 210 × 148.5 mm) voucher with the business letterhead.
+Longer vouchers continue on extra half-A4 pages. Uses the `pdf-lib`
+package (run `npm install`).

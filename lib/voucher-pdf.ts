@@ -162,9 +162,11 @@ export async function buildVoucherPdf(data: VoucherPdfData): Promise<Uint8Array>
     }
   }
 
+  // Half A4 = A5 landscape (210 x 148.5 mm) — the classic voucher size.
+  // On A4 paper it sits in the top half, ready to be cut or filed.
   const PAGE_W = 595.28;
-  const PAGE_H = 841.89;
-  const M = 40;
+  const PAGE_H = 420.94;
+  const M = 30;
   const CONTENT_W = PAGE_W - M * 2;
 
   const ink = rgb(0.09, 0.11, 0.16);
@@ -207,83 +209,88 @@ export async function buildVoucherPdf(data: VoucherPdfData): Promise<Uint8Array>
     });
 
   /* ---------------- Letterhead ---------------- */
-  const LOGO = 48;
+  const LOGO = 40;
   let textX = M;
   if (logo) {
     const scale = Math.min(LOGO / logo.width, LOGO / logo.height);
     const w = logo.width * scale;
     const h = logo.height * scale;
     page.drawImage(logo, { x: M, y: y - h, width: w, height: h });
-    textX = M + LOGO + 12;
+    textX = M + LOGO + 10;
   }
 
   const bizName = clean(data.business.name) || "Business";
-  text(bizName, textX, y - 14, 17, bold);
-  let hy = y - 14;
+  text(bizName, textX, y - 12, 15, bold);
+  let hy = y - 12;
   const contactBits = [
     data.business.address,
-    [data.business.phone && `Tel: ${data.business.phone}`, data.business.email]
+    [
+      data.business.phone && `Tel: ${data.business.phone}`,
+      data.business.email && `Email: ${data.business.email}`,
+      data.business.taxNumber && `NTN / Tax No: ${data.business.taxNumber}`,
+    ]
       .filter(Boolean)
-      .join("   "),
-    data.business.taxNumber ? `NTN / Tax No: ${data.business.taxNumber}` : "",
+      .join("  |  "),
   ].filter((v): v is string => !!v && !!v.trim());
   for (const bit of contactBits) {
-    for (const l of wrap(bit, regular, 8.5, PAGE_W - M - textX)) {
-      hy -= 12;
-      text(l, textX, hy, 8.5, regular, muted);
+    for (const l of wrap(bit, regular, 8, PAGE_W - M - textX)) {
+      hy -= 10.5;
+      text(l, textX, hy, 8, regular, muted);
     }
   }
-  y = Math.min(hy, y - LOGO) - 12;
+  y = Math.min(hy, y - LOGO) - 9;
   hr(y, 1.2, ink);
-  y -= 22;
+  y -= 16;
 
   /* ---------------- Title band ---------------- */
-  page.drawRectangle({ x: M, y: y - 8, width: CONTENT_W, height: 26, color: tint });
+  page.drawRectangle({ x: M, y: y - 6, width: CONTENT_W, height: 21, color: tint });
   const title = clean(data.title).toUpperCase();
-  const tw = bold.widthOfTextAtSize(title, 12.5);
-  text(title, (PAGE_W - tw) / 2, y, 12.5, bold);
-  y -= 30;
+  const tw = bold.widthOfTextAtSize(title, 11.5);
+  text(title, (PAGE_W - tw) / 2, y, 11.5, bold);
+  y -= 24;
 
   /* ---------------- Meta ---------------- */
-  text("Voucher No:", M, y, 9, regular, muted);
-  text(data.voucherNo, M + 62, y, 10, bold);
+  text("Voucher No:", M, y, 8.5, regular, muted);
+  text(data.voucherNo, M + 58, y, 9.5, bold);
   const dateStr = prettyDate(data.date);
-  textRight(dateStr, PAGE_W - M, y, 10, bold);
-  textRight("Date:", PAGE_W - M - bold.widthOfTextAtSize(dateStr, 10) - 6, y, 9, regular, muted);
+  textRight(dateStr, PAGE_W - M, y, 9.5, bold);
+  textRight("Date:", PAGE_W - M - bold.widthOfTextAtSize(dateStr, 9.5) - 6, y, 8.5, regular, muted);
 
   if (data.chequeNo || data.chequeDate) {
-    y -= 16;
+    y -= 13;
     const parts: string[] = [];
     if (data.chequeNo) parts.push(`Cheque No: ${data.chequeNo}`);
     if (data.chequeDate) parts.push(`Cheque Date: ${prettyDate(data.chequeDate)}`);
-    text(parts.join("      "), M, y, 9);
+    text(parts.join("      "), M, y, 8.5);
   }
-  y -= 20;
+  y -= 15;
 
   /* ---------------- Table ---------------- */
   const drawTableHead = () => {
-    page.drawRectangle({ x: M, y: y - 20, width: CONTENT_W, height: 20, color: ink });
+    page.drawRectangle({ x: M, y: y - 17, width: CONTENT_W, height: 17, color: ink });
     const white = rgb(1, 1, 1);
-    const by = y - 14;
+    const by = y - 12;
     text("A/C NO", COL_NO, by, 8, bold, white);
     text("ACCOUNT NAME", COL_NAME, by, 8, bold, white);
     text("NARRATION", COL_NARR, by, 8, bold, white);
     textRight("DEBIT", RIGHT_DEBIT, by, 8, bold, white);
     textRight("CREDIT", RIGHT_CREDIT, by, 8, bold, white);
-    y -= 20;
+    y -= 17;
   };
 
-  const newPage = () => {
+  const newPage = (withHead = true) => {
     page = doc.addPage([PAGE_W, PAGE_H]);
     y = PAGE_H - M;
-    drawTableHead();
+    if (withHead) drawTableHead();
   };
 
   drawTableHead();
 
   const narrW = Math.max(60, RIGHT_DEBIT - 84 - COL_NARR - 6);
-  const LINE_H = 11;
-  const ROW_PAD = 5;
+  const LINE_H = 10;
+  const ROW_PAD = 4;
+  // The signature line sits at the foot of the LAST page.
+  const SIG_Y = M + 26;
 
   let totalDebit = 0;
   let totalCredit = 0;
@@ -292,24 +299,24 @@ export async function buildVoucherPdf(data: VoucherPdfData): Promise<Uint8Array>
     totalDebit += l.debit;
     totalCredit += l.credit;
 
-    const nameLines = wrap(l.accountName, regular, 9, W_NAME);
-    const narrLines = wrap(l.narration, regular, 9, narrW);
+    const nameLines = wrap(l.accountName, regular, 8.5, W_NAME);
+    const narrLines = wrap(l.narration, regular, 8.5, narrW);
     const rows = Math.max(nameLines.length, narrLines.length, 1);
     const rowH = rows * LINE_H + ROW_PAD * 2;
 
-    if (y - rowH < M + 200) newPage(); // keep room for totals + signatures
+    if (y - rowH < M + 22) newPage(); // rows fill the page; totals follow on the last one
 
     const rowTop = y;
     const rowBottom = y - rowH;
     if (i % 2 === 1) {
       page.drawRectangle({ x: M, y: rowBottom, width: CONTENT_W, height: rowH, color: rgb(0.975, 0.98, 0.985) });
     }
-    const baseY = rowTop - ROW_PAD - 8;
-    text(l.accountNo, COL_NO, baseY, 9, regular, muted);
-    nameLines.forEach((t, k) => text(t, COL_NAME, baseY - k * LINE_H, 9));
-    narrLines.forEach((t, k) => text(t, COL_NARR, baseY - k * LINE_H, 9, regular, muted));
-    if (l.debit) textRight(formatAmount(l.debit, true), RIGHT_DEBIT, baseY, 9, bold);
-    if (l.credit) textRight(formatAmount(l.credit, true), RIGHT_CREDIT, baseY, 9, bold);
+    const baseY = rowTop - ROW_PAD - 7;
+    text(l.accountNo, COL_NO, baseY, 8.5, regular, muted);
+    nameLines.forEach((t, k) => text(t, COL_NAME, baseY - k * LINE_H, 8.5));
+    narrLines.forEach((t, k) => text(t, COL_NARR, baseY - k * LINE_H, 8.5, regular, muted));
+    if (l.debit) textRight(formatAmount(l.debit, true), RIGHT_DEBIT, baseY, 8.5, bold);
+    if (l.credit) textRight(formatAmount(l.credit, true), RIGHT_CREDIT, baseY, 8.5, bold);
 
     page.drawLine({
       start: { x: M, y: rowBottom },
@@ -320,24 +327,30 @@ export async function buildVoucherPdf(data: VoucherPdfData): Promise<Uint8Array>
     y = rowBottom;
   });
 
+  // Totals, amount in words and signatures must all fit on the last
+  // page — otherwise they move to a fresh page of their own.
+  const words = amountInWords(Math.max(totalDebit, totalCredit));
+  const wordLines = wrap(words, bold, 9.5, CONTENT_W);
+  const footBlockH = 19 + 14 + 11 + wordLines.length * 12 + 22;
+  if (y - footBlockH < SIG_Y) newPage(false);
+
   // Totals row
-  page.drawRectangle({ x: M, y: y - 22, width: CONTENT_W, height: 22, color: tint });
-  text("TOTAL", COL_NAME, y - 15, 9.5, bold);
-  textRight(formatAmount(totalDebit, true), RIGHT_DEBIT, y - 15, 9.5, bold);
-  textRight(formatAmount(totalCredit, true), RIGHT_CREDIT, y - 15, 9.5, bold);
-  y -= 22 + 26;
+  page.drawRectangle({ x: M, y: y - 19, width: CONTENT_W, height: 19, color: tint });
+  text("TOTAL", COL_NAME, y - 13, 9, bold);
+  textRight(formatAmount(totalDebit, true), RIGHT_DEBIT, y - 13, 9, bold);
+  textRight(formatAmount(totalCredit, true), RIGHT_CREDIT, y - 13, 9, bold);
+  y -= 19 + 14;
 
   /* ---------------- Amount in words ---------------- */
-  const words = amountInWords(Math.max(totalDebit, totalCredit));
-  text("Amount in words", M, y, 8.5, regular, muted);
-  y -= 13;
-  for (const l of wrap(words, bold, 10, CONTENT_W)) {
-    text(l, M, y, 10, bold);
-    y -= 13;
+  text("Amount in words", M, y, 8, regular, muted);
+  y -= 11;
+  for (const l of wordLines) {
+    text(l, M, y, 9.5, bold);
+    y -= 12;
   }
 
   /* ---------------- Signatures ---------------- */
-  const sigY = Math.min(y - 46, M + 70);
+  const sigY = SIG_Y;
   const labels = ["Prepared By", "Checked By", "Approved By", "Received By"];
   const gap = 18;
   const sigW = (CONTENT_W - gap * (labels.length - 1)) / labels.length;
@@ -345,10 +358,10 @@ export async function buildVoucherPdf(data: VoucherPdfData): Promise<Uint8Array>
     const x = M + i * (sigW + gap);
     if (label === "Prepared By" && data.preparedBy) {
       const n = clean(data.preparedBy);
-      text(n, x + (sigW - regular.widthOfTextAtSize(n, 8.5)) / 2, sigY + 5, 8.5, regular, muted);
+      text(n, x + (sigW - regular.widthOfTextAtSize(n, 8)) / 2, sigY + 4, 8, regular, muted);
     }
     page.drawLine({ start: { x, y: sigY }, end: { x: x + sigW, y: sigY }, thickness: 0.7, color: ink });
-    text(label, x + (sigW - regular.widthOfTextAtSize(label, 8.5)) / 2, sigY - 12, 8.5, regular, muted);
+    text(label, x + (sigW - regular.widthOfTextAtSize(label, 8)) / 2, sigY - 10, 8, regular, muted);
   });
 
   /* ---------------- Footer on every page ---------------- */
