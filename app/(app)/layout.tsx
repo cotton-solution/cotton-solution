@@ -14,9 +14,8 @@ import { fetchSiteSettings } from "@/lib/supabase/site-settings";
 export async function generateMetadata(): Promise<Metadata> {
   const { siteName } = await fetchSiteSettings();
   return {
-    title: `${siteName} Commission Agent`,
-    description:
-      "Enterprise accounting, brokerage & agricultural commission management system",
+    title: siteName,
+    description: "Accounting, invoicing & business management",
   };
 }
 

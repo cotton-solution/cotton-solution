@@ -1,13 +1,16 @@
-import { SimpleVoucherForm } from "@/components/simple-voucher-form";
+"use client";
+
+import { VoucherEditor } from "@/components/voucher-editor";
 
 export default function Page() {
   return (
-    <SimpleVoucherForm
+    <VoucherEditor
       title="Bank Cheque Deposit"
-      voucherPrefix="BCD"
-      partyLabel="Customer"
+      numberPrefix="BCD"
       voucherType="bank_cheque_deposit"
-      showBankAccount
+      mode="single"
+      anchor={{ kind: "bank", side: "debit" }}
+      narrationTemplate={(name) => `Cheque Received From ${name}`}
       showCheque
     />
   );

@@ -26,6 +26,8 @@ export function MobileNav() {
   const categoryLabel = business?.category
     ? BUSINESS_CATEGORY_LABELS[business.category]
     : null;
+  const displayName = business?.name || settings.siteName;
+  const displayLogo = business?.logoUrl || settings.logoUrl;
 
   async function handleLogOut() {
     setOpen(false);
@@ -58,11 +60,11 @@ export function MobileNav() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 min-w-0"
               >
-                {settings.logoUrl ? (
+                {displayLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={settings.logoUrl}
-                    alt={settings.siteName}
+                    src={displayLogo}
+                    alt={displayName}
                     className="h-9 w-9 rounded-lg object-cover"
                   />
                 ) : (
@@ -72,10 +74,10 @@ export function MobileNav() {
                 )}
                 <div className="leading-tight min-w-0">
                   <p className="text-sm font-semibold text-slate-900 truncate">
-                    {settings.siteName}
+                    {displayName}
                   </p>
                   <p className="text-xs text-slate-500 truncate">
-                    {categoryLabel ?? "Commission Agent"}
+                    {categoryLabel ?? "Business Account"}
                   </p>
                 </div>
               </Link>

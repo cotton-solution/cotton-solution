@@ -25,6 +25,12 @@ export function Sidebar() {
     ? BUSINESS_CATEGORY_LABELS[business.category]
     : null;
 
+  // Each paying business shows its own name & logo (set in Settings →
+  // Company Profile) — the platform's own branding is only a fallback
+  // for the brief moment before the business record has loaded.
+  const displayName = business?.name || settings.siteName;
+  const displayLogo = business?.logoUrl || settings.logoUrl;
+
   async function handleLogOut() {
     await signOut();
     router.push("/login");
@@ -36,11 +42,11 @@ export function Sidebar() {
         href="/"
         className="flex items-center gap-2.5 h-16 px-5 border-b border-slate-200 hover:bg-slate-50 transition-colors"
       >
-        {settings.logoUrl ? (
+        {displayLogo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={settings.logoUrl}
-            alt={settings.siteName}
+            src={displayLogo}
+            alt={displayName}
             className="h-9 w-9 rounded-lg object-cover"
           />
         ) : (
@@ -50,10 +56,10 @@ export function Sidebar() {
         )}
         <div className="leading-tight min-w-0">
           <p className="text-sm font-semibold text-slate-900 truncate">
-            {settings.siteName}
+            {displayName}
           </p>
           <p className="text-xs text-slate-500 truncate">
-            {categoryLabel ?? "Commission Agent"}
+            {categoryLabel ?? "Business Account"}
           </p>
         </div>
       </Link>

@@ -105,7 +105,7 @@ function DashboardView({ businesses }: { businesses: Business[] }) {
       <div className="rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 text-white p-6">
         <p className="text-lg font-semibold">Welcome, Admin!</p>
         <p className="text-emerald-50/90 text-sm mt-1">
-          {settings.siteName} Commission Agent
+          {settings.siteName}
         </p>
         <p className="text-emerald-100/60 text-xs mt-0.5">
           Service Owner Panel · Subscriptions &amp; Billing

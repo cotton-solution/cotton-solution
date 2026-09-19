@@ -73,7 +73,7 @@ export function Header() {
           <MobileNav />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">
-              {business?.name ?? `${settings.siteName} Commission Agent`}
+              {business?.name ?? settings.siteName}
             </p>
             <div className="hidden sm:block mt-0.5">
               <Breadcrumbs />

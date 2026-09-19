@@ -17,6 +17,7 @@ export default function CompanyProfilePage() {
   const { business, loading, refresh } = useBusiness();
 
   const [name, setName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [category, setCategory] = useState<BusinessCategory | "">("");
@@ -31,6 +32,7 @@ export default function CompanyProfilePage() {
   useEffect(() => {
     if (!business) return;
     setName(business.name);
+    setLogoUrl(business.logoUrl ?? "");
     setContactEmail(business.contactEmail ?? "");
     setContactPhone(business.contactPhone ?? "");
     setCategory(business.category ?? "");
@@ -46,6 +48,7 @@ export default function CompanyProfilePage() {
     setError(null);
     const { error: err } = await updateMyCompanyProfile(business.id, {
       name,
+      logoUrl: logoUrl || null,
       contactEmail: contactEmail || null,
       contactPhone: contactPhone || null,
       category: category || null,
@@ -81,6 +84,34 @@ export default function CompanyProfilePage() {
         </div>
       ) : (
         <section className="rounded-xl border border-slate-200 bg-white shadow-card p-5 space-y-5">
+          <div className="flex items-center gap-4">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={name || "Company logo"}
+                className="h-14 w-14 rounded-lg object-cover border border-slate-200"
+              />
+            ) : (
+              <div className="h-14 w-14 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300 text-xs">
+                No logo
+              </div>
+            )}
+            <div className="flex-1">
+              <Label>Logo URL</Label>
+              <Input
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+                placeholder="https://…/logo.png"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                This appears in your sidebar, mobile menu and header —
+                only your own team sees it. Paste a link to an image
+                you&apos;ve hosted elsewhere (file upload isn&apos;t wired up yet).
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <Label>Business Name</Label>

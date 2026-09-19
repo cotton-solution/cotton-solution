@@ -150,7 +150,7 @@ export function BrandPanel() {
       )}
 
       <p className="relative mt-auto pt-10 text-xs text-slate-400">
-        &copy; {new Date().getFullYear()} {siteName} Commission Agent
+        &copy; {new Date().getFullYear()} {siteName}
       </p>
     </div>
   );
