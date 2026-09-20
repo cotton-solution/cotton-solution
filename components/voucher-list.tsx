@@ -10,25 +10,25 @@ import { RecordsTable, FilterChip, AmountCell } from "@/components/records-table
 import { RecordDetailDrawer } from "@/components/record-detail-drawer";
 
 type Row = VoucherRecord | DemoVoucher;
-type Group = "all" | "receipts" | "payments" | "journal" | "contra";
+type Group = "all" | "receipts" | "payments" | "adjustments";
 
 const GROUP_TYPES: Record<Exclude<Group, "all">, (VoucherType | "journal")[]> = {
   receipts: ["cash_receiving", "bank_receipt", "bank_cheque_deposit"],
   payments: ["cash_payment", "cash_payment_wht", "bank_payment", "bank_cheque_issue"],
-  journal: ["journal"],
-  contra: ["contra_cash_to_bank", "contra_bank_to_cash"],
+  adjustments: ["journal", "ibft", "contra_cash_to_bank", "contra_bank_to_cash"],
 };
 
 const TYPE_LABEL: Record<VoucherType | "journal", string> = {
   cash_receiving: "Cash Receiving",
   cash_payment: "Cash Payment",
   cash_payment_wht: "Cash Payment (WHT)",
-  bank_receipt: "Bank Receipt",
-  bank_payment: "Bank Payment",
+  bank_receipt: "Bank Receipts",
+  bank_payment: "Bank Issue",
   bank_cheque_deposit: "Cheque Deposit",
   bank_cheque_issue: "Cheque Issue",
   contra_cash_to_bank: "Contra (Cash→Bank)",
   contra_bank_to_cash: "Contra (Bank→Cash)",
+  ibft: "IBFT",
   journal: "Journal",
 };
 
@@ -85,11 +85,8 @@ export function VoucherList() {
             <FilterChip active={group === "payments"} onClick={() => setGroup("payments")}>
               Payments
             </FilterChip>
-            <FilterChip active={group === "journal"} onClick={() => setGroup("journal")}>
-              Journal
-            </FilterChip>
-            <FilterChip active={group === "contra"} onClick={() => setGroup("contra")}>
-              Contra
+            <FilterChip active={group === "adjustments"} onClick={() => setGroup("adjustments")}>
+              Adjustments
             </FilterChip>
           </div>
         }
@@ -163,7 +160,15 @@ export function VoucherList() {
                   ? [{ label: "Party", value: partyName(selected.partyId) }]
                   : []),
                 ...(selected.bankAccount
-                  ? [{ label: "Bank Account", value: selected.bankAccount }]
+                  ? [
+                      {
+                        label: selected.toBankAccount ? "From Bank Account" : "Bank Account",
+                        value: selected.bankAccount,
+                      },
+                    ]
+                  : []),
+                ...(selected.toBankAccount
+                  ? [{ label: "To Bank Account", value: selected.toBankAccount }]
                   : []),
                 ...(selected.chequeNo
                   ? [{ label: "Cheque #", value: selected.chequeNo }]

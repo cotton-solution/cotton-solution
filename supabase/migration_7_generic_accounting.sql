@@ -15,8 +15,7 @@ alter table businesses
   add column if not exists currency text not null default 'PKR',
   add column if not exists tax_number text,
   add column if not exists address text,
-  add column if not exists website text,
-  add column if not exists logo_url text;
+  add column if not exists website text;
 
 -- ------------------------------------------------------------
 -- Banking: bank accounts + credit cards
@@ -216,6 +215,7 @@ create policy "Tenant isolation via PO" on purchase_order_lines
     purchase_order_id in (select id from purchase_orders where business_id = my_business_id() or is_admin())
   );
 
+create index if not exists idx_bank_accounts_business on bank_accounts(business_id);
 create index if not exists idx_credit_cards_business on credit_cards(business_id);
 create index if not exists idx_quotations_business_date on quotations(business_id, quote_date);
 create index if not exists idx_po_business_date on purchase_orders(business_id, po_date);

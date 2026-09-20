@@ -6,23 +6,22 @@ import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 export function DataModeBanner({
   demoMessage = "Demo mode — this record is not saved permanently. Connect Supabase to persist it (see README).",
+  connectedMessage = "Connected to Supabase — this record will be saved to your database.",
 }: {
   demoMessage?: string;
+  connectedMessage?: string;
 }) {
-  // When the database is connected there's nothing worth saying — and
-  // naming the backend to customers leaks how the platform is built.
-  // Only the developer-facing demo notice is ever shown.
-  if (isSupabaseConfigured) return null;
-
   return (
     <div
       className={cn(
         "flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2",
-        "bg-amber-50 text-amber-700"
+        isSupabaseConfigured
+          ? "bg-emerald-50 text-emerald-700"
+          : "bg-amber-50 text-amber-700"
       )}
     >
       <Database size={14} />
-      {demoMessage}
+      {isSupabaseConfigured ? connectedMessage : demoMessage}
     </div>
   );
 }
