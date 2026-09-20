@@ -14,10 +14,9 @@ import { cn } from "@/lib/utils";
  * One component drives both the desktop sidebar and the mobile
  * drawer, so the two can never drift apart.
  *
- * A module with sub-pages expands in place instead of forcing a
- * trip through its hub page — the old "dashboard → module → card
- * → form" walk was three clicks for work people do fifty times
- * a day.
+ * A module with sub-pages opens its own page when its name is
+ * clicked and expands its list at the same time. The small arrow
+ * on the right only shows / hides the list.
  * ============================================================
  */
 
@@ -86,36 +85,61 @@ export function NavTree({
 
         return (
           <div key={m.key}>
-            <button
-              onClick={() =>
-                setOpen((prev) =>
-                  prev.includes(m.key)
-                    ? prev.filter((k) => k !== m.key)
-                    : [...prev, m.key]
-                )
-              }
-              aria-expanded={expanded}
+            <div
               className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium transition-colors",
-                rowPad,
-                isActive
-                  ? "text-brand-700"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                "flex items-center rounded-lg transition-colors",
+                pathname === m.href
+                  ? "bg-brand-50"
+                  : "hover:bg-slate-50"
               )}
             >
-              <Icon
-                size={18}
-                className={isActive ? "text-brand-600" : "text-slate-400"}
-              />
-              <span className="flex-1 text-left">{m.label}</span>
-              <ChevronRight
-                size={14}
+              {/* Clicking the name opens the module's page AND expands its list. */}
+              <Link
+                href={m.href}
+                onClick={() => {
+                  setOpen((prev) =>
+                    prev.includes(m.key) ? prev : [...prev, m.key]
+                  );
+                  onNavigate?.();
+                }}
+                aria-current={pathname === m.href ? "page" : undefined}
                 className={cn(
-                  "text-slate-400 transition-transform",
-                  expanded && "rotate-90"
+                  "flex min-w-0 flex-1 items-center gap-3 pl-3 text-[13.5px] font-medium",
+                  rowPad,
+                  isActive
+                    ? "text-brand-700"
+                    : "text-slate-600 hover:text-slate-900"
                 )}
-              />
-            </button>
+              >
+                <Icon
+                  size={18}
+                  className={isActive ? "text-brand-600" : "text-slate-400"}
+                />
+                <span className="flex-1 text-left">{m.label}</span>
+              </Link>
+              {/* The arrow alone only shows / hides the list, without leaving the page. */}
+              <button
+                type="button"
+                onClick={() =>
+                  setOpen((prev) =>
+                    prev.includes(m.key)
+                      ? prev.filter((k) => k !== m.key)
+                      : [...prev, m.key]
+                  )
+                }
+                aria-expanded={expanded}
+                aria-label={`${expanded ? "Collapse" : "Expand"} ${m.label}`}
+                className={cn("px-3 text-slate-400 hover:text-slate-700", rowPad)}
+              >
+                <ChevronRight
+                  size={14}
+                  className={cn(
+                    "transition-transform",
+                    expanded && "rotate-90"
+                  )}
+                />
+              </button>
+            </div>
 
             {expanded && (
               <div className="mt-0.5 mb-1 ml-[22px] border-l border-slate-200 pl-2.5">
