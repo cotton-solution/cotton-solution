@@ -1188,7 +1188,7 @@ function LoginPageSettingsTab() {
               id="site-name"
               value={siteName}
               onChange={(e) => setSiteName(e.target.value)}
-              placeholder="Bahar-e-Madina"
+              placeholder="HisaabDesk"
             />
           </div>
           <div>
@@ -1197,7 +1197,7 @@ function LoginPageSettingsTab() {
               id="site-tagline"
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
-              placeholder="Run your commission business with confidence."
+              placeholder="Manage parties, ledgers, commissions and financial reports — all in one place."
             />
           </div>
           <div>
@@ -1206,7 +1206,7 @@ function LoginPageSettingsTab() {
               id="site-brand-subtitle"
               value={brandSubtitle}
               onChange={(e) => setBrandSubtitle(e.target.value)}
-              placeholder="Commission Management"
+              placeholder="Online Accounts Management Software"
             />
           </div>
           <div>
@@ -1215,7 +1215,7 @@ function LoginPageSettingsTab() {
               id="site-login-title"
               value={loginTitle}
               onChange={(e) => setLoginTitle(e.target.value)}
-              placeholder="Welcome back"
+              placeholder="Welcome back !"
             />
           </div>
           <div>
@@ -1233,7 +1233,7 @@ function LoginPageSettingsTab() {
               id="site-copyright"
               value={copyrightText}
               onChange={(e) => setCopyrightText(e.target.value)}
-              placeholder="© {year} {siteName}"
+              placeholder="© {year} {siteName} - All Rights Reserve"
             />
           </div>
           <div className="flex items-center gap-3 pt-1">
