@@ -19,17 +19,17 @@ export function LoginCard({
   return (
     <div className="flex w-full flex-col items-center justify-center">
       {/* Mobile-only compact brand row — the full brand panel is hidden below lg */}
-      <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+      <div className="mb-8 flex items-center gap-4 lg:hidden">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logoUrl}
             alt={siteName}
-            className="h-10 w-10 rounded-[10px] object-cover border border-slate-200"
+            className="h-20 w-20 rounded-[16px] object-cover border border-slate-200"
           />
         ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-green-800">
-            <Sprout size={18} className="text-white" />
+          <div className="flex h-20 w-20 items-center justify-center rounded-[16px] bg-green-800">
+            <Sprout size={36} className="text-white" />
           </div>
         )}
         <span className="font-semibold text-slate-900">{siteName}</span>

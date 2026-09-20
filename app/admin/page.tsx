@@ -1005,6 +1005,10 @@ function LoginPageSettingsTab() {
 
   const [siteName, setSiteName] = useState(settings.siteName);
   const [tagline, setTagline] = useState(settings.tagline);
+  const [brandSubtitle, setBrandSubtitle] = useState(settings.brandSubtitle);
+  const [loginTitle, setLoginTitle] = useState(settings.loginTitle);
+  const [loginSubtitle, setLoginSubtitle] = useState(settings.loginSubtitle);
+  const [copyrightText, setCopyrightText] = useState(settings.copyrightText);
   const [savingBrand, setSavingBrand] = useState(false);
   const [brandSaved, setBrandSaved] = useState(false);
   const [brandError, setBrandError] = useState<string | null>(null);
@@ -1023,7 +1027,18 @@ function LoginPageSettingsTab() {
   useEffect(() => {
     setSiteName(settings.siteName);
     setTagline(settings.tagline);
-  }, [settings.siteName, settings.tagline]);
+    setBrandSubtitle(settings.brandSubtitle);
+    setLoginTitle(settings.loginTitle);
+    setLoginSubtitle(settings.loginSubtitle);
+    setCopyrightText(settings.copyrightText);
+  }, [
+    settings.siteName,
+    settings.tagline,
+    settings.brandSubtitle,
+    settings.loginTitle,
+    settings.loginSubtitle,
+    settings.copyrightText,
+  ]);
 
   if (!isSupabaseConfigured) {
     return (
@@ -1041,6 +1056,10 @@ function LoginPageSettingsTab() {
     const { error } = await updateSiteSettings({
       siteName: siteName.trim(),
       tagline: tagline.trim(),
+      brandSubtitle: brandSubtitle.trim(),
+      loginTitle: loginTitle.trim(),
+      loginSubtitle: loginSubtitle.trim(),
+      copyrightText: copyrightText.trim(),
     });
     await refresh();
     setSavingBrand(false);
@@ -1159,8 +1178,8 @@ function LoginPageSettingsTab() {
       </SettingsCard>
 
       <SettingsCard
-        title="Website name & tagline"
-        description="The name replaces every hardcoded mention across the site; the tagline appears on the login screen."
+        title="Website name & login page text"
+        description="The name replaces every hardcoded mention across the site. The other lines appear on the login screen. You can use {siteName} and {year} inside any line."
       >
         <div className="space-y-3.5 max-w-md">
           <div>
@@ -1181,11 +1200,47 @@ function LoginPageSettingsTab() {
               placeholder="Run your commission business with confidence."
             />
           </div>
+          <div>
+            <Label htmlFor="site-brand-subtitle">Line under the name</Label>
+            <Input
+              id="site-brand-subtitle"
+              value={brandSubtitle}
+              onChange={(e) => setBrandSubtitle(e.target.value)}
+              placeholder="Commission Management"
+            />
+          </div>
+          <div>
+            <Label htmlFor="site-login-title">Login heading</Label>
+            <Input
+              id="site-login-title"
+              value={loginTitle}
+              onChange={(e) => setLoginTitle(e.target.value)}
+              placeholder="Welcome back"
+            />
+          </div>
+          <div>
+            <Label htmlFor="site-login-subtitle">Login sub-line</Label>
+            <Input
+              id="site-login-subtitle"
+              value={loginSubtitle}
+              onChange={(e) => setLoginSubtitle(e.target.value)}
+              placeholder="Sign in to your {siteName} account."
+            />
+          </div>
+          <div>
+            <Label htmlFor="site-copyright">Copyright line</Label>
+            <Input
+              id="site-copyright"
+              value={copyrightText}
+              onChange={(e) => setCopyrightText(e.target.value)}
+              placeholder="© {year} {siteName}"
+            />
+          </div>
           <div className="flex items-center gap-3 pt-1">
             <Button
               type="button"
               onClick={handleSaveBrand}
-              disabled={savingBrand || !siteName.trim()}
+              disabled={savingBrand || !siteName.trim() || !loginTitle.trim()}
             >
               {savingBrand ? "Saving…" : "Save changes"}
             </Button>

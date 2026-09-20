@@ -5,6 +5,7 @@ import { BarChart3, ShieldCheck, Sprout, UsersRound } from "lucide-react";
 import { useSiteSettings } from "@/components/site-settings-provider";
 import { CottonMotif } from "@/components/auth/cotton-motif";
 import { FeatureCard } from "@/components/auth/feature-card";
+import { fillSiteText } from "@/lib/supabase/site-settings";
 
 const FALLBACK_FEATURES = [
   {
@@ -37,13 +38,13 @@ function BrandMark({
       <img
         src={logoUrl}
         alt={siteName}
-        className="h-10 w-10 rounded-[10px] object-cover border border-slate-200"
+        className="h-20 w-20 rounded-[16px] object-cover border border-slate-200"
       />
     );
   }
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-green-800">
-      <Sprout size={18} className="text-white" />
+    <div className="flex h-20 w-20 items-center justify-center rounded-[16px] bg-green-800">
+      <Sprout size={36} className="text-white" />
     </div>
   );
 }
@@ -112,7 +113,7 @@ function SlidePanel({ slides }: { slides: ReturnType<typeof useSiteSettings>["sl
 
 export function BrandPanel() {
   const { settings, slides } = useSiteSettings();
-  const { logoUrl, siteName, tagline } = settings;
+  const { logoUrl, siteName, tagline, brandSubtitle, copyrightText } = settings;
   const hasCustomSlides = slides.length > 0;
 
   return (
@@ -120,13 +121,15 @@ export function BrandPanel() {
       {/* subtle decorative cotton/botanical mark, low-contrast corner accent */}
       <CottonMotif className="pointer-events-none absolute -right-4 top-0 h-40 w-40 opacity-70" />
 
-      <div className="relative flex items-center gap-2.5 auth-fade-up">
+      <div className="relative flex items-center gap-4 auth-fade-up">
         <BrandMark logoUrl={logoUrl} siteName={siteName} />
         <div>
           <p className="font-semibold leading-5 text-slate-900">{siteName}</p>
-          <p className="text-xs font-medium leading-4 text-slate-500">
-            Commission Management
-          </p>
+          {brandSubtitle && (
+            <p className="text-xs font-medium leading-4 text-slate-500">
+              {fillSiteText(brandSubtitle, siteName)}
+            </p>
+          )}
         </div>
       </div>
 
@@ -149,9 +152,11 @@ export function BrandPanel() {
         </div>
       )}
 
-      <p className="relative mt-auto pt-10 text-xs text-slate-400">
-        &copy; {new Date().getFullYear()} {siteName}
-      </p>
+      {copyrightText && (
+        <p className="relative mt-auto pt-10 text-xs text-slate-400">
+          {fillSiteText(copyrightText, siteName)}
+        </p>
+      )}
     </div>
   );
 }

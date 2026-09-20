@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { useSiteSettings } from "@/components/site-settings-provider";
 import { isSupabaseConfigured, setRememberMe } from "@/lib/supabase/client";
+import { fillSiteText } from "@/lib/supabase/site-settings";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -67,10 +68,10 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Welcome back"
+      title={fillSiteText(settings.loginTitle, settings.siteName)}
       subtitle={
         isSupabaseConfigured
-          ? `Sign in to your ${settings.siteName} account.`
+          ? fillSiteText(settings.loginSubtitle, settings.siteName)
           : "Demo mode — any email & password will sign you in."
       }
     >
