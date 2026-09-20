@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, LayoutDashboard } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { AppModule } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 
@@ -34,28 +34,12 @@ export function NavTree({
 
   return (
     <nav className="space-y-0.5">
-      <Link
-        href="/"
-        onClick={onNavigate}
-        aria-current={pathname === "/" ? "page" : undefined}
-        className={cn(
-          "flex items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium transition-colors",
-          rowPad,
-          pathname === "/"
-            ? "bg-brand-50 text-brand-700"
-            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-        )}
-      >
-        <LayoutDashboard
-          size={18}
-          className={pathname === "/" ? "text-brand-600" : "text-slate-400"}
-        />
-        Dashboard
-      </Link>
-
       {modules.map((m) => {
         const Icon = m.icon;
-        const isActive = pathname === m.href || pathname.startsWith(`${m.href}/`);
+        const isActive =
+          m.href === "/"
+            ? pathname === "/"
+            : pathname === m.href || pathname.startsWith(`${m.href}/`);
         const hasChildren = (m.children ?? []).length > 0;
 
         return (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Search, UserCog } from "lucide-react";
 import { MobileNav } from "@/components/mobile-nav";
 import { LiveClock } from "@/components/live-clock";
@@ -13,7 +13,7 @@ import {
 } from "@/components/command-palette";
 import { useAuth } from "@/components/auth-provider";
 import { useBusiness } from "@/components/business-provider";
-import { useSiteSettings } from "@/components/site-settings-provider";
+import { useBusinessIdentity } from "@/components/business-mark";
 import { visibleModuleKeys } from "@/lib/modules";
 import { effectiveModuleKeys, ROLE_LABELS } from "@/lib/team-data";
 
@@ -37,7 +37,8 @@ export function Header() {
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { business, isOwner, membership } = useBusiness();
-  const { settings } = useSiteSettings();
+  const identity = useBusinessIdentity();
+  const pathname = usePathname();
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -72,10 +73,18 @@ export function Header() {
         <div className="flex items-center gap-3 min-w-0">
           <MobileNav />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">
-              {business?.name ?? `${settings.siteName} Commission Agent`}
+            {/* The business name already sits at the top of the sidebar on
+                desktop, so it's only repeated here on small screens where
+                the sidebar is tucked away in the menu. */}
+            <p className="lg:hidden text-sm font-semibold text-slate-900 truncate">
+              {identity.name}
             </p>
-            <div className="hidden sm:block mt-0.5">
+            {pathname === "/" && (
+              <p className="hidden lg:block text-sm font-semibold text-slate-900">
+                Dashboard
+              </p>
+            )}
+            <div className="hidden sm:block lg:mt-0 mt-0.5">
               <Breadcrumbs />
             </div>
           </div>

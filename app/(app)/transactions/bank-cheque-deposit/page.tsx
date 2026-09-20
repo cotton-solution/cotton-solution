@@ -1,17 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { VoucherEditor } from "@/components/voucher-editor";
-
+/** Renamed: Bank Cheque Deposit is now Bank Receipts Voucher. */
 export default function Page() {
-  return (
-    <VoucherEditor
-      title="Bank Cheque Deposit"
-      numberPrefix="BCD"
-      voucherType="bank_cheque_deposit"
-      mode="single"
-      anchor={{ kind: "bank", side: "debit" }}
-      narrationTemplate={(name) => `Cheque Received From ${name}`}
-      showCheque
-    />
-  );
+  redirect("/transactions/bank-receipt-voucher");
 }

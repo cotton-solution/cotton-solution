@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
 import { useSiteSettings } from "@/components/site-settings-provider";
 import { isSupabaseConfigured, setRememberMe } from "@/lib/supabase/client";
+import { fillSiteText } from "@/lib/supabase/site-settings";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -67,10 +68,10 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Welcome back"
+      title={fillSiteText(settings.loginTitle, settings.siteName)}
       subtitle={
         isSupabaseConfigured
-          ? `Sign in to your ${settings.siteName} account.`
+          ? fillSiteText(settings.loginSubtitle, settings.siteName)
           : "Demo mode — any email & password will sign you in."
       }
     >
@@ -151,10 +152,11 @@ export default function LoginPage() {
         <Button
           type="submit"
           disabled={submitting}
+          aria-busy={submitting}
           className="mt-6 h-12 w-full gap-2 rounded-[10px] bg-green-800 text-[15px] font-semibold text-white transition-colors duration-150 ease-out hover:bg-green-900 focus-visible:ring-4 focus-visible:ring-green-600/15"
         >
           {submitting && <Loader2 size={16} className="animate-spin" />}
-          {submitting ? "Signing in…" : "Log In"}
+          {submitting ? "Signing in…" : "Sign In"}
         </Button>
 
         <div className="relative mt-7">

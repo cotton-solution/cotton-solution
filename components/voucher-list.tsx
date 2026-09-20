@@ -22,9 +22,9 @@ const TYPE_LABEL: Record<VoucherType | "journal", string> = {
   cash_receiving: "Cash Receiving",
   cash_payment: "Cash Payment",
   cash_payment_wht: "Cash Payment (WHT)",
-  bank_receipt: "Bank Receipts",
+  bank_receipt: "Bank Receipt",
   bank_payment: "Bank Issue",
-  bank_cheque_deposit: "Cheque Deposit",
+  bank_cheque_deposit: "Bank Receipts",
   bank_cheque_issue: "Cheque Issue",
   contra_cash_to_bank: "Contra (Cash→Bank)",
   contra_bank_to_cash: "Contra (Bank→Cash)",
@@ -160,15 +160,7 @@ export function VoucherList() {
                   ? [{ label: "Party", value: partyName(selected.partyId) }]
                   : []),
                 ...(selected.bankAccount
-                  ? [
-                      {
-                        label: selected.toBankAccount ? "From Bank Account" : "Bank Account",
-                        value: selected.bankAccount,
-                      },
-                    ]
-                  : []),
-                ...(selected.toBankAccount
-                  ? [{ label: "To Bank Account", value: selected.toBankAccount }]
+                  ? [{ label: "Bank Account", value: selected.bankAccount }]
                   : []),
                 ...(selected.chequeNo
                   ? [{ label: "Cheque #", value: selected.chequeNo }]

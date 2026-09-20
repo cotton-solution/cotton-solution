@@ -1,16 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { VoucherEditor } from "@/components/voucher-editor";
-
+/** Renamed: Bank Payment Voucher is now Bank Issue Voucher. */
 export default function Page() {
-  return (
-    <VoucherEditor
-      title="Bank Payment Voucher"
-      numberPrefix="BPV"
-      voucherType="bank_payment"
-      mode="single"
-      anchor={{ kind: "bank", side: "credit" }}
-      narrationTemplate={(name) => `Payment To ${name}`}
-    />
-  );
+  redirect("/transactions/bank-issue-voucher");
 }

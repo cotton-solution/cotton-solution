@@ -1,17 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { VoucherEditor } from "@/components/voucher-editor";
-
+/** Removed from the Transactions menu. */
 export default function Page() {
-  return (
-    <VoucherEditor
-      title="Bank Cheque Issue"
-      numberPrefix="BCI"
-      voucherType="bank_cheque_issue"
-      mode="single"
-      anchor={{ kind: "bank", side: "credit" }}
-      narrationTemplate={(name) => `Cheque Issued To ${name}`}
-      showCheque
-    />
-  );
+  redirect("/transactions");
 }

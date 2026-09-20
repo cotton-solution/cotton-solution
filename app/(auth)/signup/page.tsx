@@ -63,7 +63,7 @@ export default function SignUpPage() {
         </div>
         <Link href="/login" className="block mt-4">
           <Button type="button" variant="secondary" className="w-full">
-            Back to Log In
+            Back to Sign In
           </Button>
         </Link>
       </AuthShell>

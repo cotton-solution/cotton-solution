@@ -73,6 +73,7 @@ export function VoucherEditor({
   showCheque = false,
   fixedLineRef,
   fixedLineLabel,
+  anchorLabel,
 }: {
   voucherType: VoucherType | "journal";
   title: string;
@@ -90,6 +91,8 @@ export function VoucherEditor({
    *  shown as a locked label in the entry bar instead of a search. */
   fixedLineRef?: string;
   fixedLineLabel?: string;
+  /** Overrides the "Bank Account (Dr/Cr)" heading, e.g. "From Bank Account" for IBFT. */
+  anchorLabel?: string;
 }) {
   const { accounts, loading: accountsLoading } = useLedgerAccounts();
   const { business } = useBusiness();
@@ -288,6 +291,9 @@ export function VoucherEditor({
   function validationError(): string | null {
     if (mode === "single" && anchor.kind === "bank" && !bankRef) {
       return "Choose the bank account this voucher posts against.";
+    }
+    if (mode === "single" && anchor.kind === "bank" && lines.some((l) => l.ref === bankRef)) {
+      return "A row uses the same account as the bank account above — choose a different account.";
     }
     if (!lines.length) {
       return "Add at least one row (fill the entry bar and press Enter).";
@@ -593,7 +599,9 @@ export function VoucherEditor({
 
           {anchor.kind === "bank" && (
             <div className="sm:col-span-2">
-              <Label>Bank Account {anchor.side === "debit" ? "(Dr)" : "(Cr)"}</Label>
+              <Label>
+                {anchorLabel ?? "Bank Account"} {anchor.side === "debit" ? "(Dr)" : "(Cr)"}
+              </Label>
               <AccountPicker
                 accounts={accounts.filter((a) => a.kind === "coa")}
                 value={bankRef}

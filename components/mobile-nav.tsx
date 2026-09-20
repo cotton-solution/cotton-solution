@@ -1,23 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, LogOut, Sprout } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { modulesForUser } from "@/lib/modules";
 import { effectiveModuleKeys } from "@/lib/team-data";
 import { BUSINESS_CATEGORY_LABELS } from "@/lib/supabase/businesses";
 import { useAuth } from "@/components/auth-provider";
 import { useBusiness } from "@/components/business-provider";
-import { useSiteSettings } from "@/components/site-settings-provider";
+import { BusinessLogo, useBusinessIdentity } from "@/components/business-mark";
 import { NavTree } from "@/components/nav-tree";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
+
+  // Portal target must only be used after mount (avoids SSR mismatch).
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const { signOut } = useAuth();
   const { business, isOwner, membership } = useBusiness();
-  const { settings } = useSiteSettings();
+  const identity = useBusinessIdentity();
 
   const modules = modulesForUser(business?.category, {
     isOwner,
@@ -26,6 +33,7 @@ export function MobileNav() {
   const categoryLabel = business?.category
     ? BUSINESS_CATEGORY_LABELS[business.category]
     : null;
+  const displayName = identity.name;
 
   async function handleLogOut() {
     setOpen(false);
@@ -44,8 +52,10 @@ export function MobileNav() {
         <Menu size={22} />
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+      {open &&
+        mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-50 lg:hidden">
           <button
             aria-label="Close navigation menu"
             className="absolute inset-0 bg-slate-900/40"
@@ -58,24 +68,17 @@ export function MobileNav() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 min-w-0"
               >
-                {settings.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={settings.logoUrl}
-                    alt={settings.siteName}
-                    className="h-9 w-9 rounded-lg object-cover"
-                  />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-                    <Sprout size={18} />
-                  </div>
-                )}
+                <BusinessLogo
+                  name={identity.name}
+                  logoUrl={identity.logoUrl}
+                  loading={identity.loading}
+                />
                 <div className="leading-tight min-w-0">
                   <p className="text-sm font-semibold text-slate-900 truncate">
-                    {settings.siteName}
+                    {displayName}
                   </p>
                   <p className="text-xs text-slate-500 truncate">
-                    {categoryLabel ?? "Commission Agent"}
+                    {categoryLabel ?? "Business Account"}
                   </p>
                 </div>
               </Link>
@@ -102,8 +105,9 @@ export function MobileNav() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </>
   );
 }
