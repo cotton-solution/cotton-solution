@@ -25,6 +25,7 @@ type VoucherRow = {
   voucher_date: string;
   party_id: string | null;
   bank_account: string | null;
+  to_bank_account?: string | null;
   net_amount: number | string | null;
   gross_amount: number | string | null;
 };
@@ -57,6 +58,7 @@ const BANK_OUT = new Set([
   "bank_payment",
   "bank_cheque_issue",
   "contra_bank_to_cash",
+  "ibft",
 ]);
 /** Money actually collected from / paid to a party (not internal moves). */
 const PARTY_IN = new Set([
@@ -71,6 +73,25 @@ const PARTY_OUT = new Set([
   "bank_cheque_issue",
 ]);
 
+/**
+ * Recent vouchers for the dashboard. `to_bank_account` (IBFT destination)
+ * only exists after migration_8, so if that column isn't there yet fall
+ * back to the older column list instead of failing the whole dashboard.
+ */
+async function fetchDashboardVouchers(since: string) {
+  const COLUMNS =
+    "id, voucher_no, voucher_type, voucher_date, party_id, bank_account, net_amount, gross_amount";
+  const run = (columns: string) =>
+    supabase!
+      .from("vouchers")
+      .select(columns)
+      .gte("voucher_date", since)
+      .order("voucher_date", { ascending: false });
+
+  const withTo = await run(`${COLUMNS}, to_bank_account`);
+  return withTo.error ? run(COLUMNS) : withTo;
+}
+
 export async function fetchDashboard(): Promise<{
   data: DashboardData;
   source: "supabase" | "demo";
@@ -83,13 +104,7 @@ export async function fetchDashboard(): Promise<{
   const since = recentMonthKeys(12)[0] + "-01";
 
   const [vouchersRes, invoicesRes, partiesRes] = await Promise.all([
-    supabase
-      .from("vouchers")
-      .select(
-        "id, voucher_no, voucher_type, voucher_date, party_id, bank_account, net_amount, gross_amount"
-      )
-      .gte("voucher_date", since)
-      .order("voucher_date", { ascending: false }),
+    fetchDashboardVouchers(since),
     supabase
       .from("invoices")
       .select(
@@ -110,7 +125,7 @@ export async function fetchDashboard(): Promise<{
     return { data: buildDemoDashboard(), source: "demo", error };
   }
 
-  const vouchers = (vouchersRes.data ?? []) as VoucherRow[];
+  const vouchers = (vouchersRes.data ?? []) as unknown as VoucherRow[];
   const invoices = (invoicesRes.data ?? []) as InvoiceRow[];
   const partyName = new Map<string, { name: string; town?: string }>();
   for (const p of (partiesRes.data ?? []) as {
@@ -159,6 +174,13 @@ export async function fetchDashboard(): Promise<{
       const current = banks.get(bank) ?? 0;
       if (BANK_IN.has(v.voucher_type)) banks.set(bank, current + amount);
       else if (BANK_OUT.has(v.voucher_type)) banks.set(bank, current - amount);
+    }
+
+    // IBFT: money leaves `bank_account` (BANK_OUT above) and lands in the
+    // destination bank.
+    if (v.voucher_type === "ibft") {
+      const toBank = v.to_bank_account?.trim();
+      if (toBank) banks.set(toBank, (banks.get(toBank) ?? 0) + amount);
     }
   }
 
@@ -266,7 +288,9 @@ export async function fetchDashboard(): Promise<{
   /* ---------------- recent activity ---------------- */
   const voucherKind = (type: string): ActivityItem["kind"] => {
     if (type === "journal") return "journal";
-    if (type.startsWith("contra")) return "contra";
+    // "contra" is the dashboard's internal kind for own-money transfers
+    // (drives the transfer icon); IBFT is one of those.
+    if (type.startsWith("contra") || type === "ibft") return "contra";
     return PARTY_IN.has(type) ? "receipt" : "payment";
   };
   const voucherTitle: Record<string, string> = {
@@ -279,6 +303,7 @@ export async function fetchDashboard(): Promise<{
     bank_cheque_issue: "Cheque issued",
     contra_cash_to_bank: "Cash moved to bank",
     contra_bank_to_cash: "Bank cash withdrawn",
+    ibft: "Bank-to-bank transfer (IBFT)",
     journal: "Journal voucher posted",
   };
 

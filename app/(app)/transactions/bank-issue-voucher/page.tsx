@@ -3,10 +3,11 @@ import { SimpleVoucherForm } from "@/components/simple-voucher-form";
 export default function Page() {
   return (
     <SimpleVoucherForm
-      title="Cash Payment Voucher"
-      voucherPrefix="CPV"
+      title="Bank Issue Voucher"
+      voucherPrefix="BPV"
       partyLabel="Vendor"
-      voucherType="cash_payment"
+      voucherType="bank_payment"
+      showBankAccount
     />
   );
 }

@@ -1,16 +1,12 @@
-"use client";
-
-import { VoucherEditor } from "@/components/voucher-editor";
+import { SimpleVoucherForm } from "@/components/simple-voucher-form";
 
 export default function Page() {
   return (
-    <VoucherEditor
+    <SimpleVoucherForm
       title="Cash Receiving Voucher"
-      numberPrefix="CRV"
+      voucherPrefix="CRV"
+      partyLabel="Customer"
       voucherType="cash_receiving"
-      mode="single"
-      anchor={{ kind: "cash", side: "debit" }}
-      narrationTemplate={(name) => `Cash Received From ${name}`}
     />
   );
 }

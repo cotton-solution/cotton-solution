@@ -2,72 +2,81 @@ import {
   Wallet,
   Banknote,
   BookText,
-  Landmark,
   ArrowRightLeft,
   Receipt,
   Users,
   ListTree,
   ArrowDownToLine,
   ArrowUpFromLine,
-  Repeat,
 } from "lucide-react";
 
+export type VoucherGroup = "Receipts" | "Payments" | "Adjustments";
+
 export const vouchers = [
+  /* ---------------- 1. Receipts ---------------- */
   {
+    group: "Receipts",
     label: "Cash Receiving Voucher",
     href: "/transactions/cash-receiving-voucher",
     icon: Wallet,
     description: "Record cash received from a customer or party",
   },
   {
+    group: "Receipts",
+    label: "Bank Receipts Voucher",
+    href: "/transactions/bank-receipt-voucher",
+    icon: ArrowDownToLine,
+    description: "Customer payment received directly into a bank account",
+  },
+
+  /* ---------------- 2. Payments ---------------- */
+  {
+    group: "Payments",
     label: "Cash Payment Voucher",
     href: "/transactions/cash-payment-voucher",
     icon: Banknote,
     description: "Record cash paid to a vendor or party",
   },
   {
+    group: "Payments",
+    label: "Bank Issue Voucher",
+    href: "/transactions/bank-issue-voucher",
+    icon: ArrowUpFromLine,
+    description: "Pay a vendor by bank transfer, online payment, or pay order",
+  },
+  {
+    group: "Payments",
+    label: "Cash Payment Voucher (WHT)",
+    href: "/transactions/cash-payment-voucher-wht",
+    icon: Receipt,
+    description: "Cash payment with withholding tax deduction",
+  },
+
+  /* ---------------- 3. Adjustments ---------------- */
+  {
+    group: "Adjustments",
     label: "Journal Voucher",
     href: "/transactions/journal-voucher",
     icon: BookText,
     description: "Post a manual debit/credit journal entry",
   },
   {
-    label: "Bank Receipt Voucher",
-    href: "/transactions/bank-receipt-voucher",
-    icon: ArrowDownToLine,
-    description: "Customer payment received directly into a bank account",
-  },
-  {
-    label: "Bank Payment Voucher",
-    href: "/transactions/bank-payment-voucher",
-    icon: ArrowUpFromLine,
-    description: "Pay a vendor by bank transfer, online payment, or pay order",
-  },
-  {
-    label: "Contra Voucher",
-    href: "/transactions/contra-voucher",
-    icon: Repeat,
-    description: "Move your own money between cash and a bank account",
-  },
-  {
-    label: "Bank Cheque Deposit",
-    href: "/transactions/bank-cheque-deposit",
-    icon: Landmark,
-    description: "Deposit a received cheque into a bank account",
-  },
-  {
-    label: "Bank Cheque Issue",
-    href: "/transactions/bank-cheque-issue",
+    group: "Adjustments",
+    label: "IBFT (Inter Bank Fund Transfer)",
+    href: "/transactions/ibft",
     icon: ArrowRightLeft,
-    description: "Issue a cheque against a bank account",
-  },
-  {
-    label: "Cash Payment Voucher (WHT)",
-    href: "/transactions/cash-payment-voucher-wht",
-    icon: Receipt,
-    description: "Cash payment with withholding tax deduction",
+    description: "Transfer funds from one bank account to another",
   },
 ] as const;
+
+/** The vouchers above, split into the three sections the page shows. */
+export const voucherGroups: {
+  title: VoucherGroup;
+  items: (typeof vouchers)[number][];
+}[] = (["Receipts", "Payments", "Adjustments"] as const).map((title) => ({
+  title,
+  items: vouchers.filter((v) => v.group === title),
+}));
 
 export const partyMasterCard = {
   label: "Customers / Party Master",

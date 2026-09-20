@@ -1,16 +1,5 @@
-"use client";
-
-import { VoucherEditor } from "@/components/voucher-editor";
+import { JournalVoucherForm } from "@/components/journal-voucher-form";
 
 export default function Page() {
-  return (
-    <VoucherEditor
-      title="Journal Voucher"
-      numberPrefix="JV"
-      voucherType="journal"
-      mode="dual"
-      anchor={{ kind: "none" }}
-      narrationTemplate={(name) => name}
-    />
-  );
+  return <JournalVoucherForm />;
 }

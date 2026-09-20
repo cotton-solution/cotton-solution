@@ -1,16 +1,14 @@
-"use client";
-
-import { VoucherEditor } from "@/components/voucher-editor";
+import { SimpleVoucherForm } from "@/components/simple-voucher-form";
 
 export default function Page() {
   return (
-    <VoucherEditor
-      title="Bank Receipt Voucher"
-      numberPrefix="BRV"
+    <SimpleVoucherForm
+      title="Bank Receipts Voucher"
+      voucherPrefix="BRV"
+      partyLabel="Customer"
       voucherType="bank_receipt"
-      mode="single"
-      anchor={{ kind: "bank", side: "debit" }}
-      narrationTemplate={(name) => `Received From ${name}`}
+      showBankAccount
+      showCheque
     />
   );
 }

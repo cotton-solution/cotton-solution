@@ -7,6 +7,7 @@ import { mockParties, type Party } from "@/lib/party-data";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchPartiesFromSupabase } from "@/lib/supabase/parties";
 import { RecordsTable, type Column } from "@/components/records-table";
+import { cn } from "@/lib/utils";
 
 type VendorRow = Party & { id: string };
 
@@ -74,13 +75,19 @@ export default function SuppliersPage() {
         </Link>
       </div>
 
-      {/* Demo notice only — nothing about the backend is shown to real customers. */}
-      {!isSupabaseConfigured && (
-        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-amber-50 text-amber-700">
-          <Database size={14} />
-          Demo mode — sample data shown. Connect Supabase to see your own vendors (see README).
-        </div>
-      )}
+      <div
+        className={cn(
+          "flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2",
+          isSupabaseConfigured
+            ? "bg-emerald-50 text-emerald-700"
+            : "bg-amber-50 text-amber-700"
+        )}
+      >
+        <Database size={14} />
+        {isSupabaseConfigured
+          ? "Connected to Supabase — vendors are read from your business's parties."
+          : "Demo mode — sample data shown. Connect Supabase to see your own vendors (see README)."}
+      </div>
 
       <div className="rounded-xl border border-slate-200 bg-white shadow-card">
         <RecordsTable

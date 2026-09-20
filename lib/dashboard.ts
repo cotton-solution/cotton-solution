@@ -232,8 +232,8 @@ export function buildDemoDashboard(): DashboardData {
       {
         id: "a5",
         kind: "contra",
-        title: "Cash moved to bank",
-        reference: "CNV-0071",
+        title: "Bank-to-bank transfer (IBFT)",
+        reference: "IBFT-0071",
         amount: 2000000,
         date: isoDaysAgo(3),
       },

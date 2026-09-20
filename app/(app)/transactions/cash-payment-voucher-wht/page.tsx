@@ -1,17 +1,13 @@
-"use client";
-
-import { VoucherEditor } from "@/components/voucher-editor";
+import { SimpleVoucherForm } from "@/components/simple-voucher-form";
 
 export default function Page() {
   return (
-    <VoucherEditor
+    <SimpleVoucherForm
       title="Cash Payment Voucher (WHT)"
-      numberPrefix="CPW"
+      voucherPrefix="CPW"
+      partyLabel="Vendor"
       voucherType="cash_payment_wht"
-      mode="single"
-      anchor={{ kind: "cash", side: "credit" }}
-      narrationTemplate={(name) => `Payment To ${name}`}
-      withholdingTax
+      showWht
     />
   );
 }

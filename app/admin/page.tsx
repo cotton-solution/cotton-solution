@@ -105,7 +105,7 @@ function DashboardView({ businesses }: { businesses: Business[] }) {
       <div className="rounded-xl bg-gradient-to-br from-emerald-800 to-emerald-950 text-white p-6">
         <p className="text-lg font-semibold">Welcome, Admin!</p>
         <p className="text-emerald-50/90 text-sm mt-1">
-          {settings.siteName}
+          {settings.siteName} Commission Agent
         </p>
         <p className="text-emerald-100/60 text-xs mt-0.5">
           Service Owner Panel · Subscriptions &amp; Billing
@@ -466,22 +466,16 @@ function EditBusinessModal({
   const [contactEmail, setContactEmail] = useState(business.contactEmail ?? "");
   const [contactPhone, setContactPhone] = useState(business.contactPhone ?? "");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
-    setSaveError(null);
-    const { error } = await updateBusinessProfile(business.id, {
-      name: name.trim(),
+    await updateBusinessProfile(business.id, {
+      name,
       contactEmail: contactEmail || null,
       contactPhone: contactPhone || null,
       category: category || null,
     });
     setSaving(false);
-    if (error) {
-      setSaveError(error);
-      return;
-    }
     onSaved();
   }
 
@@ -489,7 +483,7 @@ function EditBusinessModal({
     <Modal title="Edit business" onClose={onClose}>
       <div className="space-y-3.5">
         <div>
-          <Label htmlFor="edit-name">Business name (admin only)</Label>
+          <Label htmlFor="edit-name">Business name</Label>
           <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div>
@@ -524,11 +518,6 @@ function EditBusinessModal({
             onChange={(e) => setContactPhone(e.target.value)}
           />
         </div>
-        {saveError && (
-          <p className="text-xs font-medium text-red-700 bg-red-50 rounded-lg px-3 py-2">
-            {saveError}
-          </p>
-        )}
         <div className="flex gap-2 pt-1">
           <Button
             type="button"
@@ -1005,10 +994,6 @@ function LoginPageSettingsTab() {
 
   const [siteName, setSiteName] = useState(settings.siteName);
   const [tagline, setTagline] = useState(settings.tagline);
-  const [brandSubtitle, setBrandSubtitle] = useState(settings.brandSubtitle);
-  const [loginTitle, setLoginTitle] = useState(settings.loginTitle);
-  const [loginSubtitle, setLoginSubtitle] = useState(settings.loginSubtitle);
-  const [copyrightText, setCopyrightText] = useState(settings.copyrightText);
   const [savingBrand, setSavingBrand] = useState(false);
   const [brandSaved, setBrandSaved] = useState(false);
   const [brandError, setBrandError] = useState<string | null>(null);
@@ -1027,18 +1012,7 @@ function LoginPageSettingsTab() {
   useEffect(() => {
     setSiteName(settings.siteName);
     setTagline(settings.tagline);
-    setBrandSubtitle(settings.brandSubtitle);
-    setLoginTitle(settings.loginTitle);
-    setLoginSubtitle(settings.loginSubtitle);
-    setCopyrightText(settings.copyrightText);
-  }, [
-    settings.siteName,
-    settings.tagline,
-    settings.brandSubtitle,
-    settings.loginTitle,
-    settings.loginSubtitle,
-    settings.copyrightText,
-  ]);
+  }, [settings.siteName, settings.tagline]);
 
   if (!isSupabaseConfigured) {
     return (
@@ -1056,10 +1030,6 @@ function LoginPageSettingsTab() {
     const { error } = await updateSiteSettings({
       siteName: siteName.trim(),
       tagline: tagline.trim(),
-      brandSubtitle: brandSubtitle.trim(),
-      loginTitle: loginTitle.trim(),
-      loginSubtitle: loginSubtitle.trim(),
-      copyrightText: copyrightText.trim(),
     });
     await refresh();
     setSavingBrand(false);
@@ -1178,8 +1148,8 @@ function LoginPageSettingsTab() {
       </SettingsCard>
 
       <SettingsCard
-        title="Website name & login page text"
-        description="The name replaces every hardcoded mention across the site. The other lines appear on the login screen. You can use {siteName} and {year} inside any line."
+        title="Website name & tagline"
+        description="The name replaces every hardcoded mention across the site; the tagline appears on the login screen."
       >
         <div className="space-y-3.5 max-w-md">
           <div>
@@ -1188,7 +1158,7 @@ function LoginPageSettingsTab() {
               id="site-name"
               value={siteName}
               onChange={(e) => setSiteName(e.target.value)}
-              placeholder="HisaabDesk"
+              placeholder="Bahar-e-Madina"
             />
           </div>
           <div>
@@ -1197,50 +1167,14 @@ function LoginPageSettingsTab() {
               id="site-tagline"
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
-              placeholder="Manage parties, ledgers, commissions and financial reports — all in one place."
-            />
-          </div>
-          <div>
-            <Label htmlFor="site-brand-subtitle">Line under the name</Label>
-            <Input
-              id="site-brand-subtitle"
-              value={brandSubtitle}
-              onChange={(e) => setBrandSubtitle(e.target.value)}
-              placeholder="Online Accounts Management Software"
-            />
-          </div>
-          <div>
-            <Label htmlFor="site-login-title">Login heading</Label>
-            <Input
-              id="site-login-title"
-              value={loginTitle}
-              onChange={(e) => setLoginTitle(e.target.value)}
-              placeholder="Welcome back !"
-            />
-          </div>
-          <div>
-            <Label htmlFor="site-login-subtitle">Login sub-line</Label>
-            <Input
-              id="site-login-subtitle"
-              value={loginSubtitle}
-              onChange={(e) => setLoginSubtitle(e.target.value)}
-              placeholder="Sign in to access your business dashboard."
-            />
-          </div>
-          <div>
-            <Label htmlFor="site-copyright">Copyright line</Label>
-            <Input
-              id="site-copyright"
-              value={copyrightText}
-              onChange={(e) => setCopyrightText(e.target.value)}
-              placeholder="© {year} {siteName} - All Rights Reserve"
+              placeholder="Run your commission business with confidence."
             />
           </div>
           <div className="flex items-center gap-3 pt-1">
             <Button
               type="button"
               onClick={handleSaveBrand}
-              disabled={savingBrand || !siteName.trim() || !loginTitle.trim()}
+              disabled={savingBrand || !siteName.trim()}
             >
               {savingBrand ? "Saving…" : "Save changes"}
             </Button>

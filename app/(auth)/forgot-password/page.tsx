@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
         </div>
         <Link href="/login" className="block mt-4">
           <Button type="button" variant="secondary" className="w-full">
-            Back to Sign In
+            Back to Log In
           </Button>
         </Link>
       </AuthShell>
@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
             href="/login"
             className="text-brand-700 hover:text-brand-800 font-medium"
           >
-            Back to Sign In
+            Back to Log In
           </Link>
         </p>
       </form>

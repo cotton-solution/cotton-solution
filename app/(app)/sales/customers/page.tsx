@@ -178,13 +178,19 @@ export default function PartyMasterPage() {
         </Button>
       </div>
 
-      {/* Demo notice only — nothing about the backend is shown to real customers. */}
-      {!isSupabaseConfigured && (
-        <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-amber-50 text-amber-700">
-          <Database size={14} />
-          Demo mode — data is in-memory only. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local to persist data (see README).
-        </div>
-      )}
+      <div
+        className={cn(
+          "flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2",
+          isSupabaseConfigured
+            ? "bg-emerald-50 text-emerald-700"
+            : "bg-amber-50 text-amber-700"
+        )}
+      >
+        <Database size={14} />
+        {isSupabaseConfigured
+          ? "Connected to Supabase — changes are saved to your database."
+          : "Demo mode — data is in-memory only. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local to persist data (see README)."}
+      </div>
 
       {errorMsg && (
         <div className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-red-50 text-red-700">

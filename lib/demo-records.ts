@@ -66,6 +66,7 @@ export type DemoVoucher = {
   date: string;
   partyId: string | null;
   bankAccount: string | null;
+  toBankAccount: string | null;
   chequeNo: string | null;
   grossAmount: number;
   whtAmount: number;
@@ -83,6 +84,7 @@ const VOUCHER_PREFIX: Record<VoucherType | "journal", string> = {
   bank_cheque_issue: "BCI",
   contra_cash_to_bank: "CTV",
   contra_bank_to_cash: "CTV",
+  ibft: "IBFT",
   journal: "JV",
 };
 
@@ -92,8 +94,7 @@ const VOUCHER_CYCLE: (VoucherType | "journal")[] = [
   "bank_receipt",
   "bank_payment",
   "journal",
-  "bank_cheque_deposit",
-  "contra_cash_to_bank",
+  "ibft",
   "cash_payment_wht",
 ];
 
@@ -104,9 +105,7 @@ export function demoVouchers(): DemoVoucher[] {
   for (let i = 0; i < 12; i++) {
     const type = VOUCHER_CYCLE[i % VOUCHER_CYCLE.length];
     const amount = 120000 + ((i * 211) % 11) * 65000;
-    const isParty = !["journal", "contra_cash_to_bank", "contra_bank_to_cash"].includes(
-      type
-    );
+    const isParty = !["journal", "ibft"].includes(type);
     const wht = type === "cash_payment_wht" ? Math.round(amount * 0.045) : 0;
     rows.push({
       id: `demo-vch-${i}`,
@@ -114,10 +113,12 @@ export function demoVouchers(): DemoVoucher[] {
       voucherType: type,
       date: isoDaysAgo(i * 2),
       partyId: isParty ? parties[i % parties.length]?.id ?? null : null,
-      bankAccount: type.startsWith("bank") || type.startsWith("contra")
-        ? "HBL - Multan Cotton Market Branch (...4567)"
-        : null,
-      chequeNo: type.includes("cheque") ? `${100000 + i}` : null,
+      bankAccount:
+        type.startsWith("bank") || type === "ibft"
+          ? "HBL - Multan Cotton Market Branch (...4567)"
+          : null,
+      toBankAccount: type === "ibft" ? "MCB - Vehari Branch (...8821)" : null,
+      chequeNo: type === "bank_receipt" ? `${100000 + i}` : null,
       grossAmount: amount,
       whtAmount: wht,
       netAmount: amount - wht,
