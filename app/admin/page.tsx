@@ -1224,7 +1224,7 @@ function LoginPageSettingsTab() {
               id="site-login-subtitle"
               value={loginSubtitle}
               onChange={(e) => setLoginSubtitle(e.target.value)}
-              placeholder="Sign in to your {siteName} account."
+              placeholder="Sign in to access your business dashboard."
             />
           </div>
           <div>
