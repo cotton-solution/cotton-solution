@@ -12,5 +12,5 @@
 alter table site_settings
   add column if not exists brand_subtitle text not null default 'Online Accounts Management Software',
   add column if not exists login_title text not null default 'Welcome back !',
-  add column if not exists login_subtitle text not null default 'Sign in to your {siteName} account.',
+  add column if not exists login_subtitle text not null default 'Sign in to access your business dashboard.',
   add column if not exists copyright_text text not null default '© {year} {siteName} - All Rights Reserve';

@@ -6,7 +6,7 @@ export const DEFAULT_TAGLINE =
 
 export const DEFAULT_BRAND_SUBTITLE = "Online Accounts Management Software";
 export const DEFAULT_LOGIN_TITLE = "Welcome back !";
-export const DEFAULT_LOGIN_SUBTITLE = "Sign in to your {siteName} account.";
+export const DEFAULT_LOGIN_SUBTITLE = "Sign in to access your business dashboard.";
 export const DEFAULT_COPYRIGHT_TEXT = "© {year} {siteName} - All Rights Reserve";
 
 export type SiteSettings = {
