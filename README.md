@@ -620,3 +620,12 @@ Print and Download PDF on every voucher screen produce a half-A4
 (A5 landscape, 210 × 148.5 mm) voucher with the business letterhead.
 Longer vouchers continue on extra half-A4 pages. Uses the `pdf-lib`
 package (run `npm install`).
+
+
+## Login page texts (`migration_10_login_page_text.sql`)
+
+Run **`supabase/migration_10_login_page_text.sql`** once in the Supabase SQL
+Editor. It lets the service admin edit, from **Website Setting → Login Page**,
+the line under the website name, the login heading ("Welcome back"), the
+login sub-line and the copyright line. Text can use `{siteName}` and `{year}`.
+Until the migration is run the site simply shows the built-in defaults.
