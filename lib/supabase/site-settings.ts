@@ -1,12 +1,13 @@
 import { supabase } from "@/lib/supabase/client";
 
-export const DEFAULT_SITE_NAME = "Bahar-e-Madina";
-export const DEFAULT_TAGLINE = "Run your commission business with confidence.";
+export const DEFAULT_SITE_NAME = "HisaabDesk";
+export const DEFAULT_TAGLINE =
+  "Manage parties, ledgers, commissions and financial reports — all in one place.";
 
-export const DEFAULT_BRAND_SUBTITLE = "Commission Management";
-export const DEFAULT_LOGIN_TITLE = "Welcome back";
+export const DEFAULT_BRAND_SUBTITLE = "Online Accounts Management Software";
+export const DEFAULT_LOGIN_TITLE = "Welcome back !";
 export const DEFAULT_LOGIN_SUBTITLE = "Sign in to your {siteName} account.";
-export const DEFAULT_COPYRIGHT_TEXT = "© {year} {siteName}";
+export const DEFAULT_COPYRIGHT_TEXT = "© {year} {siteName} - All Rights Reserve";
 
 export type SiteSettings = {
   logoUrl: string | null;

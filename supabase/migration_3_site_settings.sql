@@ -14,8 +14,8 @@
 create table if not exists site_settings (
   id boolean primary key default true,
   logo_url text,
-  site_name text not null default 'Bahar-e-Madina',
-  tagline text not null default 'Run your commission business with confidence.',
+  site_name text not null default 'HisaabDesk',
+  tagline text not null default 'Manage parties, ledgers, commissions and financial reports — all in one place.',
   updated_at timestamptz not null default now(),
   constraint site_settings_singleton check (id)
 );
