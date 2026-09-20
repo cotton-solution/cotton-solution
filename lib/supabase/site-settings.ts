@@ -1,19 +1,44 @@
 import { supabase } from "@/lib/supabase/client";
 
-export const DEFAULT_SITE_NAME = "Bahar-e-Madina";
-export const DEFAULT_TAGLINE = "Run your commission business with confidence.";
+export const DEFAULT_SITE_NAME = "HisaabDesk";
+export const DEFAULT_TAGLINE =
+  "Manage parties, ledgers, commissions and financial reports — all in one place.";
+
+export const DEFAULT_BRAND_SUBTITLE = "Online Accounts Management Software";
+export const DEFAULT_LOGIN_TITLE = "Welcome back !";
+export const DEFAULT_LOGIN_SUBTITLE = "Sign in to access your business dashboard.";
+export const DEFAULT_COPYRIGHT_TEXT = "© {year} {siteName} - All Rights Reserve";
 
 export type SiteSettings = {
   logoUrl: string | null;
   siteName: string;
   tagline: string;
+  /** Small line shown under the website name. Empty = hidden. */
+  brandSubtitle: string;
+  /** Heading on the login card. */
+  loginTitle: string;
+  /** Line under the login heading. Empty = hidden. */
+  loginSubtitle: string;
+  /** Footer line on the login page. Empty = hidden. */
+  copyrightText: string;
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   logoUrl: null,
   siteName: DEFAULT_SITE_NAME,
   tagline: DEFAULT_TAGLINE,
+  brandSubtitle: DEFAULT_BRAND_SUBTITLE,
+  loginTitle: DEFAULT_LOGIN_TITLE,
+  loginSubtitle: DEFAULT_LOGIN_SUBTITLE,
+  copyrightText: DEFAULT_COPYRIGHT_TEXT,
 };
+
+/** Replaces {siteName} and {year} inside admin-written text. */
+export function fillSiteText(text: string, siteName: string): string {
+  return text
+    .replace(/\{siteName\}/g, siteName)
+    .replace(/\{year\}/g, String(new Date().getFullYear()));
+}
 
 export type SiteSlide = {
   id: string;
@@ -24,10 +49,16 @@ export type SiteSlide = {
   createdAt: string;
 };
 
+// The four text columns come from migration_10; they are optional here so
+// the site keeps working (with defaults) until that migration is run.
 type SiteSettingsRow = {
   logo_url: string | null;
   site_name: string;
   tagline: string;
+  brand_subtitle?: string | null;
+  login_title?: string | null;
+  login_subtitle?: string | null;
+  copyright_text?: string | null;
 };
 
 type SiteSlideRow = {
@@ -57,7 +88,7 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
 
   const { data, error } = await supabase
     .from("site_settings")
-    .select("logo_url, site_name, tagline")
+    .select("*")
     .maybeSingle();
 
   if (error || !data) return DEFAULT_SITE_SETTINGS;
@@ -67,6 +98,10 @@ export async function fetchSiteSettings(): Promise<SiteSettings> {
     logoUrl: row.logo_url,
     siteName: row.site_name || DEFAULT_SITE_NAME,
     tagline: row.tagline || DEFAULT_TAGLINE,
+    brandSubtitle: row.brand_subtitle ?? DEFAULT_BRAND_SUBTITLE,
+    loginTitle: row.login_title || DEFAULT_LOGIN_TITLE,
+    loginSubtitle: row.login_subtitle ?? DEFAULT_LOGIN_SUBTITLE,
+    copyrightText: row.copyright_text ?? DEFAULT_COPYRIGHT_TEXT,
   };
 }
 
@@ -75,6 +110,10 @@ export async function updateSiteSettings(updates: {
   logoUrl?: string | null;
   siteName?: string;
   tagline?: string;
+  brandSubtitle?: string;
+  loginTitle?: string;
+  loginSubtitle?: string;
+  copyrightText?: string;
 }): Promise<{ error: string | null }> {
   if (!supabase) return { error: "Supabase is not configured." };
 
@@ -84,6 +123,18 @@ export async function updateSiteSettings(updates: {
       ...(updates.logoUrl !== undefined ? { logo_url: updates.logoUrl } : {}),
       ...(updates.siteName !== undefined ? { site_name: updates.siteName } : {}),
       ...(updates.tagline !== undefined ? { tagline: updates.tagline } : {}),
+      ...(updates.brandSubtitle !== undefined
+        ? { brand_subtitle: updates.brandSubtitle }
+        : {}),
+      ...(updates.loginTitle !== undefined
+        ? { login_title: updates.loginTitle }
+        : {}),
+      ...(updates.loginSubtitle !== undefined
+        ? { login_subtitle: updates.loginSubtitle }
+        : {}),
+      ...(updates.copyrightText !== undefined
+        ? { copyright_text: updates.copyrightText }
+        : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", true);

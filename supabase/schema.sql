@@ -286,7 +286,6 @@ create table if not exists vouchers (
   voucher_date date not null,
   party_id text,
   bank_account text,
-  to_bank_account text, -- IBFT only: destination bank (bank_account = source)
   cheque_no text,
   cheque_date date,
   gross_amount numeric(14, 2) not null default 0,
