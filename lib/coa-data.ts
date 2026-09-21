@@ -15,28 +15,39 @@ export type Account = {
   isActive: boolean;
   /** Party heads and the parties under them come from Party Master — shown, not edited, here. */
   readOnly?: boolean;
+  /** A sub head: a group that other accounts sit under. Not used in vouchers. */
+  isGroup?: boolean;
 };
 
 export const accountTypes: { value: AccountType; label: string; prefix: string }[] = [
+  // Parties come first — everywhere the types are listed.
+  { value: "party", label: "Party", prefix: "6" },
   { value: "asset", label: "Asset", prefix: "1" },
   { value: "liability", label: "Liability", prefix: "2" },
   { value: "equity", label: "Equity", prefix: "3" },
   { value: "income", label: "Income", prefix: "4" },
   { value: "expense", label: "Expense", prefix: "5" },
-  { value: "party", label: "Party", prefix: "6" },
 ];
 
-/** The types an account can be created as here (parties are added in Party Master). */
+/** The types a sub head can be created under (party heads are fixed: Buyers / Sellers / Misc Parties). */
 export const editableAccountTypes = accountTypes.filter((t) => t.value !== "party");
 
 export function accountTypeLabel(t: AccountType): string {
   return accountTypes.find((a) => a.value === t)?.label ?? t;
 }
 
+/** The Party sub heads every business starts with (Chart of Accounts → Parties). */
+export const defaultPartySubHeadAccounts: Account[] = [
+  { id: "6200000", code: "6200000", name: "Buyer", accountType: "party", parentCode: "", isActive: true, isGroup: true },
+  { id: "6300000", code: "6300000", name: "Seller", accountType: "party", parentCode: "", isActive: true, isGroup: true },
+  { id: "6400000", code: "6400000", name: "Misc Parties", accountType: "party", parentCode: "", isActive: true, isGroup: true },
+];
+
 /** Mirrors the default rows `seed_new_business()` inserts in Supabase,
  *  so demo mode (no Supabase configured) looks the same as a fresh
  *  real account. */
 export const mockAccounts: Account[] = [
+  ...defaultPartySubHeadAccounts,
   {
     id: "1010001",
     code: "1010001",
@@ -87,6 +98,16 @@ export const mockAccounts: Account[] = [
   },
 ];
 
+/** Next code for a new Party sub head: 6500000, 6600000 … (the 3 defaults use 62/63/64). */
+export function nextPartySubHeadCode(accounts: Account[]): string {
+  const nums = accounts
+    .filter((a) => a.accountType === "party" && a.isGroup)
+    .map((a) => parseInt(a.code, 10))
+    .filter((n) => !isNaN(n));
+  const max = Math.max(6400000, ...nums);
+  return String(Math.floor(max / 100000) * 100000 + 100000);
+}
+
 export function emptyAccount(code: string): Account {
   return {
     id: code,
@@ -95,6 +116,7 @@ export function emptyAccount(code: string): Account {
     accountType: "asset",
     parentCode: "",
     isActive: true,
+    isGroup: false,
   };
 }
 

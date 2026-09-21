@@ -121,6 +121,11 @@ language plpgsql
 security definer
 as $$
 begin
+  insert into chart_of_accounts (business_id, code, name, account_type, is_group) values
+    (new.id, '6200000', 'Buyer', 'party', true),
+    (new.id, '6300000', 'Seller', 'party', true),
+    (new.id, '6400000', 'Misc Parties', 'party', true);
+
   insert into chart_of_accounts (business_id, code, name, account_type) values
     (new.id, '1010001', 'Cash in Hand', 'asset'),
     (new.id, '1020001', 'Bank Account', 'asset'),
@@ -195,9 +200,10 @@ create table if not exists chart_of_accounts (
   code text not null,
   name text not null,
   account_type text not null check (
-    account_type in ('asset', 'liability', 'equity', 'income', 'expense')
+    account_type in ('party', 'asset', 'liability', 'equity', 'income', 'expense')
   ),
   parent_code text,
+  is_group boolean not null default false, -- true = a sub head (groups other accounts)
   created_at timestamptz not null default now(),
   unique (business_id, code)
 );
@@ -209,7 +215,6 @@ create table if not exists parties_customers (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null default my_business_id() references businesses(id) on delete cascade,
   party_id text not null, -- e.g. 6210001, unique within the business
-  party_type text not null default 'buyer' check (party_type in ('buyer', 'seller', 'misc')),
   name text not null,
   name_urdu text,
   english_business_name text,
@@ -227,6 +232,7 @@ create table if not exists parties_customers (
   bank_account text,
   contact_person text,
   can_also_be_vendor boolean not null default false,
+  sub_head_code text, -- Party sub head override; empty = follows the ID block (62… Buyer, 63… Seller, 64… Misc)
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (business_id, party_id)

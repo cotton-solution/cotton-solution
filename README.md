@@ -680,9 +680,11 @@ Notes:
   as "My Business", Company Profile can't load): run
   `supabase/migration_13_fix_rls_recursion.sql` once in the Supabase SQL Editor.
 
-- **Party heads in Chart of Accounts**: Settings → Chart of Accounts now lists the heads
-  **Buyers (62), Sellers (63) and Misc Parties (64)** with every party under its head
-  (read-only there — parties are still added/edited in Party Master). Party Master has a new
-  **Party Type (Head)** field. **Run `supabase/migration_14_party_types.sql` once** so the type
-  can be saved; until then every party shows under Buyers. Sellers automatically count as
-  vendors (Suppliers, Purchase Orders, Purchase Weighment).
+- **Chart of Accounts = Account Type → Sub Head → Head of Account.** Types are fixed
+  (Party first, then Asset, Liability, Equity, Income, Expense). Use **Add Sub Head** to create
+  a sub head under a type (e.g. Expense → *Administration*, Party → *Buyer*) and **Add Account
+  Head** to add a head of account under it (e.g. *Stationery Expense*; for Party, e.g. *ABC
+  Traders* — that creates the party in Party Master). Buyer, Seller and Misc Parties are the
+  first three Party sub heads; Sellers automatically count as vendors. Sub heads are never
+  offered as accounts in vouchers. **Run `supabase/migration_15_coa_sub_heads.sql` once**
+  (it replaces migration_14, which is no longer needed).

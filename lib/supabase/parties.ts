@@ -1,9 +1,9 @@
 import { supabase } from "@/lib/supabase/client";
-import type { Party, PartyType } from "@/lib/party-data";
+import type { Party } from "@/lib/party-data";
 
 type PartyRow = {
   party_id: string;
-  party_type?: PartyType | null;
+  sub_head_code?: string | null;
   name: string;
   name_urdu: string | null;
   english_business_name: string | null;
@@ -26,7 +26,7 @@ type PartyRow = {
 function rowToParty(row: PartyRow): Party {
   return {
     id: row.party_id,
-    partyType: row.party_type ?? "buyer",
+    subHeadCode: row.sub_head_code ?? undefined,
     name: row.name,
     nameUrdu: row.name_urdu ?? "",
     englishBusinessName: row.english_business_name ?? "",
@@ -50,7 +50,9 @@ function rowToParty(row: PartyRow): Party {
 function partyToRow(party: Party): PartyRow {
   return {
     party_id: party.id,
-    party_type: party.partyType,
+    // Only sent when a sub head was chosen explicitly, so ordinary saves keep
+    // working before migration_15 (which adds this column) has been run.
+    ...(party.subHeadCode ? { sub_head_code: party.subHeadCode } : {}),
     name: party.name,
     name_urdu: party.nameUrdu || null,
     english_business_name: party.englishBusinessName || null,
@@ -79,9 +81,9 @@ export async function fetchPartiesFromSupabase(): Promise<Party[]> {
   const run = (columns: string) =>
     supabase!.from("parties_customers").select(columns).order("party_id", { ascending: true });
 
-  // `party_type` comes with migration_14. Until it is run, load the parties
-  // without it (everyone shows as a Buyer) instead of losing the whole list.
-  let { data, error } = await run(`${PARTY_COLUMNS}, party_type`);
+  // `sub_head_code` comes with migration_15. Until it is run, load the parties
+  // without it (each falls under the sub head its ID block points to).
+  let { data, error } = await run(`${PARTY_COLUMNS}, sub_head_code`);
   if (error) ({ data, error } = await run(PARTY_COLUMNS));
   if (error || !data) {
     if (error) console.error("fetchPartiesFromSupabase error:", error.message);
@@ -96,10 +98,10 @@ export async function saveParty(party: Party): Promise<{ error: string | null }>
     .from("parties_customers")
     .upsert(partyToRow(party), { onConflict: "business_id,party_id" });
 
-  if (error && /party_type/i.test(error.message)) {
+  if (error && /sub_head_code/i.test(error.message)) {
     return {
       error:
-        "The Party Type column doesn't exist yet. Run supabase/migration_14_party_types.sql once in the Supabase SQL Editor, then save again.",
+        "Moving a party to another sub head needs one database update. Run supabase/migration_15_coa_sub_heads.sql once in the Supabase SQL Editor, then save again.",
     };
   }
   return { error: error?.message ?? null };

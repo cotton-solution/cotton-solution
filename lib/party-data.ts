@@ -1,10 +1,11 @@
-/** Which Chart-of-Accounts party head a party sits under. */
-export type PartyType = "buyer" | "seller" | "misc";
-
 export type Party = {
   id: string;
-  /** Buyer / Seller / Misc Parties — decides the head it is listed under. */
-  partyType: PartyType;
+  /**
+   * The Party sub head (Buyer / Seller / Misc Parties / your own) this party is
+   * listed under in the Chart of Accounts. Left empty it follows the party's ID
+   * block (62… = Buyer, 63… = Seller, 64… = Misc Parties).
+   */
+  subHeadCode?: string;
   name: string;
   nameUrdu: string;
   englishBusinessName: string;
@@ -24,30 +25,29 @@ export type Party = {
   canAlsoBeVendor: boolean;
 };
 
-/**
- * The three party heads shown in the Chart of Accounts. `idBase` is where a
- * new party's ID sequence starts (6210001, 6310001, 6410001…), so every party
- * ID falls under its head's block: 62… Buyers, 63… Sellers, 64… Misc Parties.
- */
-export const partyTypes: {
-  value: PartyType;
-  label: string;
-  headCode: string;
-  headName: string;
-  idBase: number;
-}[] = [
-  { value: "buyer", label: "Buyer", headCode: "6200000", headName: "Buyers", idBase: 6210000 },
-  { value: "seller", label: "Seller", headCode: "6300000", headName: "Sellers", idBase: 6310000 },
-  { value: "misc", label: "Misc Parties", headCode: "6400000", headName: "Misc Parties", idBase: 6410000 },
+/** The Party sub heads every business starts with (they can add more in Chart of Accounts). */
+export const defaultPartySubHeads = [
+  { code: "6200000", name: "Buyer" },
+  { code: "6300000", name: "Seller" },
+  { code: "6400000", name: "Misc Parties" },
 ];
+export const SELLER_HEAD_CODE = "6300000";
 
-export function partyTypeInfo(t: PartyType) {
-  return partyTypes.find((x) => x.value === t) ?? partyTypes[0];
+/** A party's ID block tells which sub head it belongs to: 6210001 -> 6200000. */
+export function subHeadFromId(id: string): string {
+  const n = parseInt(id, 10);
+  if (isNaN(n) || n < 6000000 || n >= 7000000) return defaultPartySubHeads[0].code;
+  return String(Math.floor(n / 100000) * 100000);
 }
 
-/** Sellers are always vendors; a buyer/misc party can be flagged as one too. */
+/** The sub head this party is listed under. */
+export function partySubHead(p: Party): string {
+  return p.subHeadCode || subHeadFromId(p.id);
+}
+
+/** Sellers are always vendors; any other party can be flagged as one too. */
 export function isVendorParty(p: Party): boolean {
-  return p.canAlsoBeVendor || p.partyType === "seller";
+  return p.canAlsoBeVendor || partySubHead(p) === SELLER_HEAD_CODE;
 }
 
 export const towns = [
@@ -76,7 +76,7 @@ export const partyGroups = [
   "Textile Mill",
 ];
 
-const rawMockParties: Omit<Party, "partyType">[] = [
+export const mockParties: Party[] = [
   {
     id: "6210001",
     name: "Muhammad Ashraf & Sons",
@@ -139,28 +139,25 @@ const rawMockParties: Omit<Party, "partyType">[] = [
   },
 ];
 
-export const mockParties: Party[] = rawMockParties.map((p) => ({
-  ...p,
-  partyType: "buyer" as const,
-}));
-
 /**
- * Next free party ID inside the chosen type's block
- * (Buyer 6210001…, Seller 6310001…, Misc Parties 6410001…).
+ * Next free party ID inside a sub head's block: under Buyer (6200000) that is
+ * 6210001, 6210002…; under Seller (6300000) 6310001…; and so on.
  */
-export function nextPartyId(existing: Party[], type: PartyType = "buyer"): string {
-  const { idBase } = partyTypeInfo(type);
+export function nextPartyId(
+  existing: Party[],
+  subHeadCode: string = defaultPartySubHeads[0].code
+): string {
+  const base = parseInt(subHeadCode, 10) + 10000;
   const nums = existing
     .map((p) => parseInt(p.id, 10))
-    .filter((n) => !isNaN(n) && n > idBase && n < idBase + 90000);
-  const max = nums.length ? Math.max(...nums) : idBase;
+    .filter((n) => !isNaN(n) && n > base && n < base + 90000);
+  const max = nums.length ? Math.max(...nums) : base;
   return String(max + 1);
 }
 
 export function emptyParty(id: string): Party {
   return {
     id,
-    partyType: "buyer",
     name: "",
     nameUrdu: "",
     englishBusinessName: "",

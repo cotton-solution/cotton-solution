@@ -29,7 +29,7 @@ export function useAccountDirectory(): {
         if (!cancelled) {
           setAccounts(
             rows
-              .filter((a) => a.isActive)
+              .filter((a) => a.isActive && !a.isGroup)
               .map((a) => ({ code: a.code, name: a.name }))
           );
         }
