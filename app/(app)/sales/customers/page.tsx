@@ -12,12 +12,12 @@ import {
   towns,
   sectors,
   partyGroups,
-  partyTypes,
   emptyParty,
   nextPartyId,
+  partySubHead,
   type Party,
-  type PartyType,
 } from "@/lib/party-data";
+import { usePartySubHeads } from "@/lib/hooks/use-party-subheads";
 import { cn } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -44,6 +44,7 @@ export default function PartyMasterPage() {
       : mockParties[0] ?? emptyParty(nextPartyId([]))
   );
   const [viewAsVendor, setViewAsVendor] = useState(false);
+  const { subHeads } = usePartySubHeads();
 
   const [townFilter, setTownFilter] = useState("--- ALL TOWNS ---");
   const [sectorFilter, setSectorFilter] = useState("--- ALL SECTORS ---");
@@ -162,13 +163,13 @@ export default function PartyMasterPage() {
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
-  // A new party's ID follows its type (Buyer 621…, Seller 631…, Misc 641…);
-  // an existing party keeps its ID and simply moves under the new head.
-  function handlePartyTypeChange(type: PartyType) {
+  // A new party's ID follows its sub head (Buyer 621…, Seller 631…); an
+  // existing party keeps its ID and simply moves under the new sub head.
+  function handleSubHeadChange(code: string) {
     setDraft((d) => ({
       ...d,
-      partyType: type,
-      id: mode === "creating" ? nextPartyId(parties, type) : d.id,
+      subHeadCode: code,
+      id: mode === "creating" ? nextPartyId(parties, code) : d.id,
     }));
   }
 
@@ -180,8 +181,8 @@ export default function PartyMasterPage() {
             Customers
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Chart of Accounts: Party heads &rarr; Buyers (62) / Sellers (63) /
-            Misc Parties (64)
+            Chart of Accounts: Party &rarr; Sub Head (Buyer / Seller / Misc
+            Parties) &rarr; the party
           </p>
         </div>
         <Button onClick={handleNew} className="shrink-0">
@@ -316,16 +317,16 @@ export default function PartyMasterPage() {
                 <Input id="party-id" value={draft.id} disabled />
               </div>
               <div>
-                <Label htmlFor="party-type">Party Type (Head)</Label>
+                <Label htmlFor="party-type">Sub Head</Label>
                 <Select
                   id="party-type"
-                  value={draft.partyType}
+                  value={partySubHead(draft)}
                   disabled={fieldsDisabled}
-                  onChange={(e) => handlePartyTypeChange(e.target.value as PartyType)}
+                  onChange={(e) => handleSubHeadChange(e.target.value)}
                 >
-                  {partyTypes.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
+                  {subHeads.map((t) => (
+                    <option key={t.code} value={t.code}>
+                      {t.name}
                     </option>
                   ))}
                 </Select>
