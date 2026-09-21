@@ -656,3 +656,22 @@ Notes:
   (and the old Bank Payment Voucher / Bank Cheque Deposit URLs) now redirect.
 - `supabase/migration_8_ibft_voucher.sql` and `components/ibft-voucher-form.tsx`
   are empty leftovers from an earlier attempt and can be deleted.
+
+
+---
+
+## Banking, Weighment & company name
+
+- **Banking** was removed from the sidebar/menus (and from the default Accountant
+  role). Its old URLs redirect to the dashboard; the database tables are untouched.
+- **Weighment** is a new tab under **Purchases** (`/purchases/weighment`) and **Sales**
+  (`/sales/weighment`). Fill Date, Vehicle No, Product, Weight, Party → Save. Each
+  entry gets an ID (`PUR-1001` / `SAL-1001`) and appears in the list below with its
+  final weight (editable until it is moved). **Move to Purchase / Sale** opens the
+  bill / invoice with the party, product and weight filled in; saving that bill marks
+  the weighment *Moved* — it can only be moved once.
+  **Run `supabase/migration_12_weighments.sql` once** before using it.
+- **Company name**: the header now always shows the company name from Settings →
+  Company Profile. If the company can't be loaded, Company Profile now shows the real
+  reason (and if migration 7's profile columns are missing, the name still loads and a
+  notice says which migration to run).

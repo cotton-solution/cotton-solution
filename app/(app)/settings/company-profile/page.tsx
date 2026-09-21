@@ -57,7 +57,7 @@ function Section({
 }
 
 export default function CompanyProfilePage() {
-  const { business, loading, refresh } = useBusiness();
+  const { business, loading, error: loadError, refresh } = useBusiness();
 
   const [logoUrl, setLogoUrl] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -153,11 +153,38 @@ export default function CompanyProfilePage() {
         </p>
       </div>
 
-      <DataModeBanner demoMessage="Demo mode — there's no signed-in business to edit here yet. Connect Supabase and sign in to manage your company profile (see README)." />
+      <DataModeBanner demoMessage="Demo mode — this site isn't connected to a database, so there's no company to show. In Vercel → Settings → Environment Variables add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, then redeploy (see README)." />
+
+      {isSupabaseConfigured && business && business.profileReady === false && (
+        <div className="flex items-start gap-2 text-xs font-medium rounded-lg px-3 py-2 bg-amber-50 text-amber-800">
+          <CircleAlert size={14} className="mt-0.5 shrink-0" />
+          <span>
+            Your database is missing the company-profile columns, so logo,
+            address, tax number and currency can&apos;t be saved yet. Run{" "}
+            <code>supabase/migration_7_generic_accounting.sql</code> once in
+            the Supabase SQL Editor, then reload this page.
+          </span>
+        </div>
+      )}
 
       {!isSupabaseConfigured || !business ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-          {loading ? "Loading…" : "Sign in to a connected business to edit its profile."}
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 space-y-2">
+          {loading ? (
+            <p>Loading…</p>
+          ) : isSupabaseConfigured ? (
+            <>
+              <p className="font-medium text-slate-700">
+                Couldn&apos;t load your company.
+              </p>
+              <p>
+                {loadError
+                  ? `Database message: ${loadError}`
+                  : "No company record was found for this login."}
+              </p>
+            </>
+          ) : (
+            <p>Connect the database to see and edit your company profile.</p>
+          )}
         </div>
       ) : (
         <>

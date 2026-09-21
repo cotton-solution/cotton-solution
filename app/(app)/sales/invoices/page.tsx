@@ -1,4 +1,5 @@
-import { InvoiceForm } from "@/components/invoice-form";
+import { Suspense } from "react";
+import { InvoiceFormWithWeighment } from "@/components/invoice-form-with-weighment";
 import { InvoiceList } from "@/components/invoice-list";
 
 export default function SalesInvoicesPage() {
@@ -11,14 +12,16 @@ export default function SalesInvoicesPage() {
         </p>
       </div>
 
-      <InvoiceForm
-        title="Sale Invoice"
-        invoicePrefix="INV"
-        category="general"
-        invoiceType="sale"
-        partyLabel="Customer"
-        includeBrokerage={false}
-      />
+      <Suspense fallback={null}>
+        <InvoiceFormWithWeighment
+          title="Sale Invoice"
+          invoicePrefix="INV"
+          category="general"
+          invoiceType="sale"
+          partyLabel="Customer"
+          includeBrokerage={false}
+        />
+      </Suspense>
 
       <InvoiceList category="general" title="Sale invoices" defaultTypeFilter="sale" />
     </div>

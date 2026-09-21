@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ReceiptText, Truck, ClipboardList } from "lucide-react";
+import { ArrowRight, ReceiptText, Truck, ClipboardList, Weight } from "lucide-react";
 
 const cards = [
   {
@@ -19,6 +19,12 @@ const cards = [
     href: "/purchases/orders",
     icon: ClipboardList,
     description: "Generate official procurement orders",
+  },
+  {
+    label: "Weighment",
+    href: "/purchases/weighment",
+    icon: Weight,
+    description: "Record vehicle weights, then move them to a purchase bill",
   },
 ];
 

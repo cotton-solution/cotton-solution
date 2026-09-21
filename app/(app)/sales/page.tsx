@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, FileText, Users, FileClock } from "lucide-react";
+import { ArrowRight, FileText, Users, FileClock, Weight } from "lucide-react";
 
 const cards = [
   {
@@ -19,6 +19,12 @@ const cards = [
     href: "/sales/quotations",
     icon: FileClock,
     description: "Build a quote and convert it into a sale invoice",
+  },
+  {
+    label: "Weighment",
+    href: "/sales/weighment",
+    icon: Weight,
+    description: "Record vehicle weights, then move them to a sale invoice",
   },
 ];
 
