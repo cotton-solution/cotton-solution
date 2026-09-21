@@ -209,6 +209,7 @@ create table if not exists parties_customers (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null default my_business_id() references businesses(id) on delete cascade,
   party_id text not null, -- e.g. 6210001, unique within the business
+  party_type text not null default 'buyer' check (party_type in ('buyer', 'seller', 'misc')),
   name text not null,
   name_urdu text,
   english_business_name text,
@@ -254,6 +255,32 @@ create table if not exists business_members (
 
 create index if not exists idx_business_members_business on business_members(business_id);
 create index if not exists idx_business_members_user on business_members(user_id);
+
+-- Cross-table look-ups used by the businesses / business_members policies.
+-- They are SECURITY DEFINER so the look-up doesn't re-run row-level security
+-- (two policies that query each other's table recurse forever otherwise).
+create or replace function is_member_of(b uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from business_members m
+    where m.business_id = b and m.user_id = auth.uid() and m.is_active
+  );
+$$;
+
+create or replace function owns_business(b uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from businesses where id = b and owner_id = auth.uid());
+$$;
 
 -- ------------------------------------------------------------
 -- Standard Crop Units (e.g. Cotton @ 40 KGS / Maund) — per business
@@ -439,12 +466,7 @@ create policy "Owner, member or admin can view business" on businesses
   for select using (
     owner_id = auth.uid()
     or is_admin()
-    or exists (
-      select 1 from business_members m
-      where m.business_id = businesses.id
-        and m.user_id = auth.uid()
-        and m.is_active
-    )
+    or is_member_of(id)
   );
 
 drop policy if exists "Owner can create own business" on businesses;
@@ -498,12 +520,10 @@ alter table business_members enable row level security;
 drop policy if exists "Owner manages members" on business_members;
 create policy "Owner manages members" on business_members
   for all using (
-    business_id = (select id from businesses where owner_id = auth.uid())
-    or is_admin()
+    owns_business(business_id) or is_admin()
   )
   with check (
-    business_id = (select id from businesses where owner_id = auth.uid())
-    or is_admin()
+    owns_business(business_id) or is_admin()
   );
 
 drop policy if exists "Member can view own membership" on business_members;

@@ -675,3 +675,14 @@ Notes:
   Company Profile. If the company can't be loaded, Company Profile now shows the real
   reason (and if migration 7's profile columns are missing, the name still loads and a
   notice says which migration to run).
+
+- **"infinite recursion detected in policy for relation businesses"** (company name shows
+  as "My Business", Company Profile can't load): run
+  `supabase/migration_13_fix_rls_recursion.sql` once in the Supabase SQL Editor.
+
+- **Party heads in Chart of Accounts**: Settings → Chart of Accounts now lists the heads
+  **Buyers (62), Sellers (63) and Misc Parties (64)** with every party under its head
+  (read-only there — parties are still added/edited in Party Master). Party Master has a new
+  **Party Type (Head)** field. **Run `supabase/migration_14_party_types.sql` once** so the type
+  can be saved; until then every party shows under Buyers. Sellers automatically count as
+  vendors (Suppliers, Purchase Orders, Purchase Weighment).

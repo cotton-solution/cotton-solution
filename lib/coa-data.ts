@@ -3,7 +3,8 @@ export type AccountType =
   | "liability"
   | "equity"
   | "income"
-  | "expense";
+  | "expense"
+  | "party";
 
 export type Account = {
   id: string; // = code, unique within the business
@@ -12,6 +13,8 @@ export type Account = {
   accountType: AccountType;
   parentCode: string; // "" = top-level (no parent)
   isActive: boolean;
+  /** Party heads and the parties under them come from Party Master — shown, not edited, here. */
+  readOnly?: boolean;
 };
 
 export const accountTypes: { value: AccountType; label: string; prefix: string }[] = [
@@ -20,7 +23,11 @@ export const accountTypes: { value: AccountType; label: string; prefix: string }
   { value: "equity", label: "Equity", prefix: "3" },
   { value: "income", label: "Income", prefix: "4" },
   { value: "expense", label: "Expense", prefix: "5" },
+  { value: "party", label: "Party", prefix: "6" },
 ];
+
+/** The types an account can be created as here (parties are added in Party Master). */
+export const editableAccountTypes = accountTypes.filter((t) => t.value !== "party");
 
 export function accountTypeLabel(t: AccountType): string {
   return accountTypes.find((a) => a.value === t)?.label ?? t;

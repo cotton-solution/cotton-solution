@@ -1,5 +1,10 @@
+/** Which Chart-of-Accounts party head a party sits under. */
+export type PartyType = "buyer" | "seller" | "misc";
+
 export type Party = {
   id: string;
+  /** Buyer / Seller / Misc Parties — decides the head it is listed under. */
+  partyType: PartyType;
   name: string;
   nameUrdu: string;
   englishBusinessName: string;
@@ -18,6 +23,32 @@ export type Party = {
   contactPerson: string;
   canAlsoBeVendor: boolean;
 };
+
+/**
+ * The three party heads shown in the Chart of Accounts. `idBase` is where a
+ * new party's ID sequence starts (6210001, 6310001, 6410001…), so every party
+ * ID falls under its head's block: 62… Buyers, 63… Sellers, 64… Misc Parties.
+ */
+export const partyTypes: {
+  value: PartyType;
+  label: string;
+  headCode: string;
+  headName: string;
+  idBase: number;
+}[] = [
+  { value: "buyer", label: "Buyer", headCode: "6200000", headName: "Buyers", idBase: 6210000 },
+  { value: "seller", label: "Seller", headCode: "6300000", headName: "Sellers", idBase: 6310000 },
+  { value: "misc", label: "Misc Parties", headCode: "6400000", headName: "Misc Parties", idBase: 6410000 },
+];
+
+export function partyTypeInfo(t: PartyType) {
+  return partyTypes.find((x) => x.value === t) ?? partyTypes[0];
+}
+
+/** Sellers are always vendors; a buyer/misc party can be flagged as one too. */
+export function isVendorParty(p: Party): boolean {
+  return p.canAlsoBeVendor || p.partyType === "seller";
+}
 
 export const towns = [
   "Multan",
@@ -45,7 +76,7 @@ export const partyGroups = [
   "Textile Mill",
 ];
 
-export const mockParties: Party[] = [
+const rawMockParties: Omit<Party, "partyType">[] = [
   {
     id: "6210001",
     name: "Muhammad Ashraf & Sons",
@@ -108,15 +139,28 @@ export const mockParties: Party[] = [
   },
 ];
 
-export function nextPartyId(existing: Party[]): string {
-  const nums = existing.map((p) => parseInt(p.id, 10)).filter((n) => !isNaN(n));
-  const max = nums.length ? Math.max(...nums) : 6210000;
+export const mockParties: Party[] = rawMockParties.map((p) => ({
+  ...p,
+  partyType: "buyer" as const,
+}));
+
+/**
+ * Next free party ID inside the chosen type's block
+ * (Buyer 6210001…, Seller 6310001…, Misc Parties 6410001…).
+ */
+export function nextPartyId(existing: Party[], type: PartyType = "buyer"): string {
+  const { idBase } = partyTypeInfo(type);
+  const nums = existing
+    .map((p) => parseInt(p.id, 10))
+    .filter((n) => !isNaN(n) && n > idBase && n < idBase + 90000);
+  const max = nums.length ? Math.max(...nums) : idBase;
   return String(max + 1);
 }
 
 export function emptyParty(id: string): Party {
   return {
     id,
+    partyType: "buyer",
     name: "",
     nameUrdu: "",
     englishBusinessName: "",
