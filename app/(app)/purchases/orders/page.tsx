@@ -17,6 +17,7 @@ import {
   type POLine,
 } from "@/lib/supabase/purchase-orders";
 import { usePartyDirectory } from "@/lib/hooks/use-party-directory";
+import { isVendorParty } from "@/lib/party-data";
 import { useDocumentNumber } from "@/lib/hooks/use-document-number";
 import { formatAmount, formatDayMonth } from "@/lib/format";
 import { RecordsTable, FilterChip, AmountCell } from "@/components/records-table";
@@ -37,7 +38,7 @@ const STATUS_STYLES: Record<PurchaseOrder["status"], string> = {
 export default function PurchaseOrdersPage() {
   const { number: poNo, ready: numberReady } = useDocumentNumber("PO", "purchase_orders", "po_no");
   const { parties, loading: partiesLoading } = usePartyDirectory();
-  const vendors = useMemo(() => parties.filter((p) => p.canAlsoBeVendor), [parties]);
+  const vendors = useMemo(() => parties.filter(isVendorParty), [parties]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [expectedDate, setExpectedDate] = useState("");
   const [partyId, setPartyId] = useState("");

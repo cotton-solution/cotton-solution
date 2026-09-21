@@ -20,6 +20,7 @@ import {
   type WeighmentKind,
 } from "@/lib/supabase/weighments";
 import { usePartyDirectory } from "@/lib/hooks/use-party-directory";
+import { isVendorParty } from "@/lib/party-data";
 import { formatFullDate } from "@/lib/format";
 
 /**
@@ -107,7 +108,7 @@ export function WeighmentManager({ kind }: { kind: WeighmentKind }) {
   // Purchases → vendors; Sales → every party.
   const partyOptions = useMemo(() => {
     if (kind === "sale") return parties;
-    const vendors = parties.filter((p) => p.canAlsoBeVendor);
+    const vendors = parties.filter(isVendorParty);
     return vendors.length ? vendors : parties;
   }, [kind, parties]);
 

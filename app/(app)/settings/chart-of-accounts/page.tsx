@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Search, FolderPlus, Database, CircleAlert } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -10,12 +11,15 @@ import { Button } from "@/components/ui/button";
 import {
   mockAccounts,
   accountTypes,
+  editableAccountTypes,
   accountTypeLabel,
   emptyAccount,
   nextAccountCode,
   type Account,
   type AccountType,
 } from "@/lib/coa-data";
+import { partyTypes, type Party } from "@/lib/party-data";
+import { usePartyDirectory } from "@/lib/hooks/use-party-directory";
 import { cn } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -64,8 +68,39 @@ export default function ChartOfAccountsPage() {
     };
   }, []);
 
+  const { parties } = usePartyDirectory();
+
+  // Party heads (Buyers / Sellers / Misc Parties) and every party under them.
+  // These come from Party Master — listed here, edited there.
+  const partyRows = useMemo<Account[]>(() => {
+    const heads: Account[] = partyTypes.map((t) => ({
+      id: `head:${t.headCode}`,
+      code: t.headCode,
+      name: t.headName,
+      accountType: "party",
+      parentCode: "",
+      isActive: true,
+      readOnly: true,
+    }));
+    const members: Account[] = parties.map((p: Party) => ({
+      id: `party:${p.id}`,
+      code: p.id,
+      name: p.name,
+      accountType: "party",
+      parentCode: partyTypes.find((t) => t.value === p.partyType)?.headCode ?? partyTypes[0].headCode,
+      isActive: true,
+      readOnly: true,
+    }));
+    return [...heads, ...members];
+  }, [parties]);
+
+  const partyCount = (headCode: string) =>
+    partyRows.filter((r) => r.parentCode === headCode).length;
+
   const filteredAccounts = useMemo(() => {
-    return accounts.filter((a) => {
+    return [...accounts, ...partyRows]
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .filter((a) => {
       const matchType = typeFilter === "ALL" || a.accountType === typeFilter;
       const matchActive = showInactive || a.isActive;
       const matchName = a.name
@@ -73,7 +108,7 @@ export default function ChartOfAccountsPage() {
         .includes(nameSearch.trim().toLowerCase());
       return matchType && matchActive && matchName;
     });
-  }, [accounts, typeFilter, showInactive, nameSearch]);
+  }, [accounts, partyRows, typeFilter, showInactive, nameSearch]);
 
   const fieldsDisabled = mode === "view";
   const isNewCode = mode === "creating";
@@ -102,12 +137,12 @@ export default function ChartOfAccountsPage() {
   }
 
   function handleEdit() {
-    if (!selectedId) return;
+    if (!selectedId || draft.readOnly) return;
     setMode("editing");
   }
 
   async function handleRemove() {
-    if (!selectedId) return;
+    if (!selectedId || draft.readOnly) return;
     const hasChildren = accounts.some((a) => a.parentCode === draft.code);
     if (hasChildren) {
       window.alert(
@@ -174,7 +209,7 @@ export default function ChartOfAccountsPage() {
   }
 
   function handleClose() {
-    const original = accounts.find((a) => a.id === selectedId);
+    const original = [...accounts, ...partyRows].find((a) => a.id === selectedId);
     setDraft(original ?? emptyAccount(nextAccountCode("asset", accounts)));
     setMode("view");
   }
@@ -291,17 +326,27 @@ export default function ChartOfAccountsPage() {
             {!loading && filteredAccounts.length === 0 && (
               <p className="p-4 text-sm text-slate-400">No accounts found.</p>
             )}
-            {filteredAccounts.map((a) => (
+            {filteredAccounts.map((a) => {
+              const isHead = a.accountType === "party" && !a.parentCode;
+              const isPartyRow = a.accountType === "party" && !!a.parentCode;
+              return (
               <button
                 key={a.id}
                 onClick={() => selectAccount(a)}
                 className={cn(
                   "w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors",
+                  isHead && "bg-slate-50/70",
+                  isPartyRow && "pl-9",
                   selectedId === a.id && mode === "view" ? "bg-brand-50" : ""
                 )}
               >
-                <p className="text-sm font-medium text-slate-900 truncate flex items-center gap-2">
+                <p className={cn("text-sm text-slate-900 truncate flex items-center gap-2", isHead ? "font-semibold" : "font-medium")}>
                   {a.name}
+                  {isHead && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-700 bg-brand-50 rounded px-1.5 py-0.5">
+                      Head · {partyCount(a.code)}
+                    </span>
+                  )}
                   {!a.isActive && (
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">
                       Inactive
@@ -312,7 +357,8 @@ export default function ChartOfAccountsPage() {
                   {a.code} &middot; {accountTypeLabel(a.accountType)}
                 </p>
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -356,7 +402,7 @@ export default function ChartOfAccountsPage() {
                     handleTypeChange(e.target.value as AccountType)
                   }
                 >
-                  {accountTypes.map((t) => (
+                  {(draft.accountType === "party" ? accountTypes : editableAccountTypes).map((t) => (
                     <option key={t.value} value={t.value}>
                       {t.label}
                     </option>
@@ -392,7 +438,10 @@ export default function ChartOfAccountsPage() {
                   onChange={(e) => update("parentCode", e.target.value)}
                 >
                   <option value="">--- Top level (no parent) ---</option>
-                  {parentOptions.map((a) => (
+                  {(draft.readOnly
+                    ? partyRows.filter((r) => !r.parentCode)
+                    : parentOptions
+                  ).map((a) => (
                     <option key={a.code} value={a.code}>
                       {a.code} — {a.name}
                     </option>
@@ -401,10 +450,22 @@ export default function ChartOfAccountsPage() {
               </div>
             </div>
 
+            {draft.readOnly && (
+              <p className="text-xs rounded-lg bg-slate-50 px-3 py-2 text-slate-600">
+                {draft.parentCode
+                  ? "This party is managed in Party Master — change its details or type there."
+                  : "Party head — every party of this type is listed under it automatically. Add parties in Party Master."}{" "}
+                <Link href="/sales/customers" className="font-medium text-brand-700 hover:underline">
+                  Open Party Master →
+                </Link>
+              </p>
+            )}
+
             <p className="text-xs text-slate-400">
               Codes starting with 1 = Asset, 2 = Liability, 3 = Equity,
-              4 = Income, 5 = Expense — matching the numbering already used
-              across your vouchers and party master.
+              4 = Income, 5 = Expense, 6 = Party heads (62 Buyers, 63 Sellers,
+              64 Misc Parties) — matching the numbering already used across
+              your vouchers and party master.
             </p>
           </div>
 
@@ -420,14 +481,14 @@ export default function ChartOfAccountsPage() {
             <Button
               variant="secondary"
               onClick={handleEdit}
-              disabled={mode !== "view" || !selectedId}
+              disabled={mode !== "view" || !selectedId || !!draft.readOnly}
             >
               Edit
             </Button>
             <Button
               variant="danger"
               onClick={handleRemove}
-              disabled={mode !== "view" || !selectedId}
+              disabled={mode !== "view" || !selectedId || !!draft.readOnly}
             >
               Remove
             </Button>

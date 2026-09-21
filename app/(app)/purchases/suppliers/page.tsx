@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Database, ArrowRight, Truck } from "lucide-react";
-import { mockParties, type Party } from "@/lib/party-data";
+import { mockParties, isVendorParty, type Party } from "@/lib/party-data";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchPartiesFromSupabase } from "@/lib/supabase/parties";
 import { RecordsTable, type Column } from "@/components/records-table";
@@ -29,7 +29,7 @@ export default function SuppliersPage() {
   }, []);
 
   const vendors: VendorRow[] = useMemo(
-    () => parties.filter((p) => p.canAlsoBeVendor).map((p) => ({ ...p, id: p.id })),
+    () => parties.filter(isVendorParty).map((p) => ({ ...p, id: p.id })),
     [parties]
   );
 

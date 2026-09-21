@@ -12,9 +12,11 @@ import {
   towns,
   sectors,
   partyGroups,
+  partyTypes,
   emptyParty,
   nextPartyId,
   type Party,
+  type PartyType,
 } from "@/lib/party-data";
 import { cn } from "@/lib/utils";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -160,6 +162,16 @@ export default function PartyMasterPage() {
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
+  // A new party's ID follows its type (Buyer 621…, Seller 631…, Misc 641…);
+  // an existing party keeps its ID and simply moves under the new head.
+  function handlePartyTypeChange(type: PartyType) {
+    setDraft((d) => ({
+      ...d,
+      partyType: type,
+      id: mode === "creating" ? nextPartyId(parties, type) : d.id,
+    }));
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -168,8 +180,8 @@ export default function PartyMasterPage() {
             Customers
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Chart of Accounts: Current Assets &rarr; Accounts Receivable /
-            Sundry Debtors (prefix 62)
+            Chart of Accounts: Party heads &rarr; Buyers (62) / Sellers (63) /
+            Misc Parties (64)
           </p>
         </div>
         <Button onClick={handleNew} className="shrink-0">
@@ -304,6 +316,21 @@ export default function PartyMasterPage() {
                 <Input id="party-id" value={draft.id} disabled />
               </div>
               <div>
+                <Label htmlFor="party-type">Party Type (Head)</Label>
+                <Select
+                  id="party-type"
+                  value={draft.partyType}
+                  disabled={fieldsDisabled}
+                  onChange={(e) => handlePartyTypeChange(e.target.value as PartyType)}
+                >
+                  {partyTypes.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
                 <Label htmlFor="party-group">Party Group</Label>
                 <Select
                   id="party-group"
@@ -316,7 +343,7 @@ export default function PartyMasterPage() {
                   ))}
                 </Select>
               </div>
-              <div className="flex items-end pb-2.5">
+              <div className="sm:col-span-2 md:col-span-3">
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <Checkbox
                     checked={draft.canAlsoBeVendor}
