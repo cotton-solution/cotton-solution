@@ -12,7 +12,7 @@ export const ROLE_LABELS: Record<MemberRole, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<MemberRole, string> = {
   admin: "Full access to every module, including Settings",
-  accountant: "Transactions, Banking, Expenses & Financial Reports",
+  accountant: "Transactions, Expenses & Financial Reports",
   trader: "Sales & Receivables, Purchases & Payables",
   viewer: "Read-only style access to Financial Reports",
   custom: "Pick exactly which modules this person can open",
@@ -29,7 +29,6 @@ export const DEFAULT_ROLE_MODULES: Record<
   admin: [
     "dashboard",
     "transactions",
-    "banking",
     "sales",
     "purchases",
     "inventory",
@@ -37,7 +36,7 @@ export const DEFAULT_ROLE_MODULES: Record<
     "reports",
     "settings",
   ],
-  accountant: ["dashboard", "transactions", "banking", "expenses", "reports"],
+  accountant: ["dashboard", "transactions", "expenses", "reports"],
   trader: ["dashboard", "sales", "purchases", "reports"],
   viewer: ["dashboard", "reports"],
 };

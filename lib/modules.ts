@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   Repeat,
-  Landmark,
   FileText,
   Truck,
   Boxes,
@@ -31,7 +30,6 @@ import type { BusinessCategory } from "@/lib/supabase/businesses";
 export type ModuleKey =
   | "dashboard"
   | "transactions"
-  | "banking"
   | "sales"
   | "purchases"
   | "inventory"
@@ -89,29 +87,17 @@ export const MODULES: readonly AppModule[] = [
     ],
   },
   {
-    key: "banking",
-    label: "Banking",
-    href: "/banking",
-    icon: Landmark,
-    description: "Bank accounts, reconciliation & credit cards",
-    overviewLabel: "Overview",
-    children: [
-      { label: "Bank Accounts", href: "/banking/accounts", keywords: "linking balances" },
-      { label: "Reconciliation", href: "/banking/reconciliation", keywords: "reconcile statement match" },
-      { label: "Credit Cards", href: "/banking/credit-cards", keywords: "card statement clearance" },
-    ],
-  },
-  {
     key: "sales",
     label: "Sales & Receivables",
     href: "/sales",
     icon: FileText,
-    description: "Customer invoices, profiles & quotations",
+    description: "Customer invoices, profiles, quotations & weighment",
     overviewLabel: "Overview",
     children: [
       { label: "Invoices", href: "/sales/invoices", keywords: "sale bill customer" },
       { label: "Customers", href: "/sales/customers", keywords: "profiles balances payment history" },
       { label: "Quotations / Estimates", href: "/sales/quotations", keywords: "estimate rate quote" },
+      { label: "Weighment", href: "/sales/weighment", keywords: "weight vehicle truck kanta weighbridge sale id" },
     ],
   },
   {
@@ -119,12 +105,13 @@ export const MODULES: readonly AppModule[] = [
     label: "Purchases & Payables",
     href: "/purchases",
     icon: Truck,
-    description: "Vendor bills, ledgers & purchase orders",
+    description: "Vendor bills, ledgers, purchase orders & weighment",
     overviewLabel: "Overview",
     children: [
       { label: "Bills", href: "/purchases/bills", keywords: "vendor bill purchase invoice" },
       { label: "Suppliers / Vendors", href: "/purchases/suppliers", keywords: "vendor ledger contact" },
       { label: "Purchase Orders", href: "/purchases/orders", keywords: "po procurement" },
+      { label: "Weighment", href: "/purchases/weighment", keywords: "weight vehicle truck kanta weighbridge purchase id" },
     ],
   },
   {
@@ -220,7 +207,7 @@ export function canAccessModule(
   return true;
 }
 
-/** Resolve a pathname (e.g. "/banking/accounts") to its module key. */
+/** Resolve a pathname (e.g. "/sales/invoices") to its module key. */
 export function moduleKeyFromPath(pathname: string): ModuleKey | null {
   // Longest-href-first so "/" (Dashboard) never shadows a real module.
   const sorted = [...MODULES].sort((a, b) => b.href.length - a.href.length);

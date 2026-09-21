@@ -9,7 +9,10 @@ import {
   type ReactNode,
 } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchMyBusiness, type Business } from "@/lib/supabase/businesses";
+import {
+  fetchMyBusinessWithStatus,
+  type Business,
+} from "@/lib/supabase/businesses";
 import { fetchMyMembership, type Membership } from "@/lib/supabase/team";
 import { useAuth } from "@/components/auth-provider";
 
@@ -20,6 +23,8 @@ type BusinessContextValue = {
   /** The signed-in staff login's role/module assignment, or null for the owner. */
   membership: Membership | null;
   loading: boolean;
+  /** Why the business couldn't be loaded (connected mode only), else null. */
+  error: string | null;
   refresh: () => Promise<void>;
 };
 
@@ -33,6 +38,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   const [isOwner, setIsOwner] = useState(true);
   const [membership, setMembership] = useState<Membership | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isSupabaseConfigured || !user) {
@@ -41,12 +47,14 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
       setBusiness(null);
       setIsOwner(true);
       setMembership(null);
+      setError(null);
       setLoading(false);
       return;
     }
     setLoading(true);
-    const b = await fetchMyBusiness();
+    const { business: b, error: loadError } = await fetchMyBusinessWithStatus();
     setBusiness(b);
+    setError(loadError);
 
     const owner = !b || !user.id || b.ownerId === user.id;
     setIsOwner(owner);
@@ -60,7 +68,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
 
   return (
     <BusinessContext.Provider
-      value={{ business, isOwner, membership, loading, refresh }}
+      value={{ business, isOwner, membership, loading, error, refresh }}
     >
       {children}
     </BusinessContext.Provider>

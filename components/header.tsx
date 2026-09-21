@@ -73,18 +73,17 @@ export function Header() {
         <div className="flex items-center gap-3 min-w-0">
           <MobileNav />
           <div className="min-w-0">
-            {/* The business name already sits at the top of the sidebar on
-                desktop, so it's only repeated here on small screens where
-                the sidebar is tucked away in the menu. */}
-            <p className="lg:hidden text-sm font-semibold text-slate-900 truncate">
+            {/* The company name (Settings → Company Profile) always sits at
+                the top of the header. */}
+            <p className="text-sm font-semibold text-slate-900 truncate">
               {identity.name}
             </p>
             {pathname === "/" && (
-              <p className="hidden lg:block text-sm font-semibold text-slate-900">
+              <p className="hidden lg:block text-[12.5px] text-slate-500">
                 Dashboard
               </p>
             )}
-            <div className="hidden sm:block lg:mt-0 mt-0.5">
+            <div className="hidden sm:block mt-0.5">
               <Breadcrumbs />
             </div>
           </div>
@@ -169,7 +168,7 @@ export function Header() {
       </header>
 
       {/* Breadcrumbs move below the header on small screens, where the
-          business name already fills the row. */}
+          company name already fills the row. */}
       <div className="sm:hidden border-b border-slate-200 bg-white px-4 py-2">
         <Breadcrumbs />
       </div>

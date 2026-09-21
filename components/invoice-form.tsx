@@ -31,6 +31,26 @@ function newLine(): LineItem {
   };
 }
 
+/** Values a bill / invoice can start with (e.g. from a weighment). */
+export type InvoiceFormPrefill = {
+  partyId?: string | null;
+  date?: string;
+  notes?: string;
+  lines?: { description: string; unit: string; qty: number; rate: number }[];
+};
+
+export type InvoiceFormProps = {
+  title: string;
+  invoicePrefix: string;
+  category: InvoiceCategory;
+  invoiceType: "purchase" | "sale";
+  partyLabel: "Vendor" | "Customer";
+  includeBrokerage: boolean;
+  prefill?: InvoiceFormPrefill;
+  /** Called after the invoice has been saved successfully. */
+  onSaved?: (invoiceNo: string) => void;
+};
+
 export function InvoiceForm({
   title,
   invoicePrefix,
@@ -38,25 +58,29 @@ export function InvoiceForm({
   invoiceType,
   partyLabel,
   includeBrokerage,
-}: {
-  title: string;
-  invoicePrefix: string;
-  category: InvoiceCategory;
-  invoiceType: "purchase" | "sale";
-  partyLabel: "Vendor" | "Customer";
-  includeBrokerage: boolean;
-}) {
+  prefill,
+  onSaved,
+}: InvoiceFormProps) {
   const { number: invoiceNo, ready: numberReady } = useDocumentNumber(
     invoicePrefix,
     "invoices",
     "invoice_no"
   );
   const { parties, loading: partiesLoading } = usePartyDirectory();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [partyId, setPartyId] = useState("");
+  const [date, setDate] = useState(
+    prefill?.date ?? new Date().toISOString().slice(0, 10)
+  );
+  const [partyId, setPartyId] = useState(prefill?.partyId ?? "");
   const [brokeragePercent, setBrokeragePercent] = useState(1);
-  const [lines, setLines] = useState<LineItem[]>([newLine()]);
-  const [notes, setNotes] = useState("");
+  const [lines, setLines] = useState<LineItem[]>(
+    prefill?.lines?.length
+      ? prefill.lines.map((l) => ({
+          ...l,
+          id: Math.random().toString(36).slice(2, 9),
+        }))
+      : [newLine()]
+  );
+  const [notes, setNotes] = useState(prefill?.notes ?? "");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -126,6 +150,7 @@ export function InvoiceForm({
       return;
     }
     setSaved(true);
+    onSaved?.(invoiceNo);
   }
 
   return (

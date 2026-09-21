@@ -35,6 +35,13 @@ export type Business = {
   address: string | null;
   website: string | null;
   logoUrl: string | null;
+  /**
+   * False when the database is missing the company-profile columns
+   * (added by migration_7) — the business is still loaded so its name
+   * shows, but logo / address / tax details can't be saved until that
+   * migration is run.
+   */
+  profileReady?: boolean;
 };
 
 type BusinessRow = {
@@ -50,14 +57,14 @@ type BusinessRow = {
   billing_status: BillingStatus;
   last_billed_at: string | null;
   created_at: string;
-  currency: string;
-  tax_number: string | null;
-  address: string | null;
-  website: string | null;
-  logo_url: string | null;
+  currency?: string;
+  tax_number?: string | null;
+  address?: string | null;
+  website?: string | null;
+  logo_url?: string | null;
 };
 
-function rowToBusiness(row: BusinessRow): Business {
+function rowToBusiness(row: BusinessRow, profileReady = true): Business {
   return {
     id: row.id,
     ownerId: row.owner_id,
@@ -72,26 +79,83 @@ function rowToBusiness(row: BusinessRow): Business {
     lastBilledAt: row.last_billed_at,
     createdAt: row.created_at,
     currency: row.currency ?? "PKR",
-    taxNumber: row.tax_number,
-    address: row.address,
-    website: row.website,
-    logoUrl: row.logo_url,
+    taxNumber: row.tax_number ?? null,
+    address: row.address ?? null,
+    website: row.website ?? null,
+    logoUrl: row.logo_url ?? null,
+    profileReady,
   };
 }
 
-const BUSINESS_COLUMNS =
-  "id, owner_id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at, currency, tax_number, address, website, logo_url";
+const CORE_COLUMNS =
+  "id, owner_id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at";
+const PROFILE_COLUMNS = "currency, tax_number, address, website, logo_url";
+const BUSINESS_COLUMNS = `${CORE_COLUMNS}, ${PROFILE_COLUMNS}`;
+
+export type MyBusinessResult = {
+  business: Business | null;
+  /** Why no business could be loaded (null when it simply doesn't exist). */
+  error: string | null;
+};
+
+/**
+ * The signed-in customer's own business (tenant) record, plus the reason
+ * if it couldn't be loaded — so the app can say *why* the company name /
+ * profile is missing instead of silently showing "My Business".
+ *
+ *  - The user's own business is looked up first by `owner_id`. (A plain
+ *    "give me the one row I can see" breaks for platform admins, who can
+ *    see every business.)
+ *  - A staff login has no business of their own; row-level security only
+ *    lets them see their employer's, so a second, unfiltered query finds it.
+ *  - If the company-profile columns from migration_7 don't exist yet, the
+ *    business is loaded without them rather than not at all.
+ */
+export async function fetchMyBusinessWithStatus(): Promise<MyBusinessResult> {
+  if (!supabase) return { business: null, error: null };
+  const client = supabase;
+
+  const {
+    data: { user },
+  } = await client.auth.getUser();
+  const ownerId = user?.id ?? null;
+
+  const query = (columns: string, owner: string | null) => {
+    let q = client.from("businesses").select(columns);
+    if (owner) q = q.eq("owner_id", owner);
+    // Two rows so an ambiguous match (several visible, none ours) is
+    // detected and rejected instead of picking one at random.
+    return q.order("created_at", { ascending: true }).limit(2);
+  };
+
+  let lastError: string | null = null;
+
+  for (const owner of ownerId ? [ownerId, null] : [null]) {
+    let profileReady = true;
+    let res = await query(BUSINESS_COLUMNS, owner);
+    if (res.error) {
+      const core = await query(CORE_COLUMNS, owner);
+      if (core.error) {
+        lastError = core.error.message;
+        continue;
+      }
+      res = core;
+      profileReady = false;
+    }
+    const rows = (res.data ?? []) as unknown as BusinessRow[];
+    // With an owner filter one row is the answer; without it, only trust an
+    // unambiguous single row.
+    if (rows.length === 1 || (owner && rows.length > 1)) {
+      return { business: rowToBusiness(rows[0], profileReady), error: null };
+    }
+  }
+
+  return { business: null, error: lastError };
+}
 
 /** The signed-in customer's own business (tenant) record, or null. */
 export async function fetchMyBusiness(): Promise<Business | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase
-    .from("businesses")
-    .select(BUSINESS_COLUMNS)
-    .maybeSingle();
-
-  if (error || !data) return null;
-  return rowToBusiness(data as BusinessRow);
+  return (await fetchMyBusinessWithStatus()).business;
 }
 
 /**
@@ -127,13 +191,25 @@ export async function createBusinessForCurrentUser(
 /** Admin-only: every registered business, newest first. */
 export async function fetchAllBusinesses(): Promise<Business[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase
+  let profileReady = true;
+  let res = await supabase
     .from("businesses")
     .select(BUSINESS_COLUMNS)
     .order("created_at", { ascending: false });
-
-  if (error || !data) return [];
-  return (data as BusinessRow[]).map(rowToBusiness);
+  if (res.error) {
+    // migration_7 (profile columns) not run yet — still list the businesses.
+    const core = await supabase
+      .from("businesses")
+      .select(CORE_COLUMNS)
+      .order("created_at", { ascending: false });
+    if (core.error) return [];
+    res = core as unknown as typeof res;
+    profileReady = false;
+  }
+  if (!res.data) return [];
+  return (res.data as unknown as BusinessRow[]).map((r) =>
+    rowToBusiness(r, profileReady)
+  );
 }
 
 /** Admin-only: change a business's plan / subscription status / expiry. */
