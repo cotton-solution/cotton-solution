@@ -15,6 +15,15 @@ export const reports = [
     href: "/reports/account-ledger",
     icon: BookOpenText,
     description: "Detailed transaction history for any account",
+    /** Opens the Account Ledger filter popup instead of jumping straight in. */
+    dialog: "account-ledger" as const,
+  },
+  {
+    label: "Accounts Balances",
+    href: "/reports/account-balances",
+    icon: Scale,
+    description: "Closing balance of every account, with filters",
+    dialog: "account-balances" as const,
   },
   {
     label: "Account Payable",

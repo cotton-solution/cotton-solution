@@ -21,8 +21,23 @@ export type Party = {
   stn: string;
   ntnCnic: string;
   bankAccount: string;
+  beneficiaryName: string;
   contactPerson: string;
   canAlsoBeVendor: boolean;
+  /** Region / Territory / Ranking — free-form groupings used by the
+   *  Parties Information popup, independent of Town/Sector above. */
+  region: string;
+  territory: string;
+  ranking: string;
+  /** Filled in by hand for a party carried over from another system;
+   *  otherwise leave blank and the auto Account No is used. */
+  manualNo: string;
+  debitLimit: number;
+  creditLimit: number;
+  province: string;
+  hsCode: string;
+  efsCode: string;
+  isActive: boolean;
 };
 
 /** The Party sub heads every business starts with (they can add more in Chart of Accounts). */
@@ -96,6 +111,17 @@ export const mockParties: Party[] = [
     bankAccount: "PK00HABB0001234567890",
     contactPerson: "Muhammad Ashraf",
     canAlsoBeVendor: true,
+    beneficiaryName: "Muhammad Ashraf",
+    region: "South Punjab",
+    territory: "Multan Zone",
+    ranking: "A",
+    manualNo: "",
+    debitLimit: 500000,
+    creditLimit: 500000,
+    province: "Punjab",
+    hsCode: "",
+    efsCode: "",
+    isActive: true,
   },
   {
     id: "6210002",
@@ -116,6 +142,17 @@ export const mockParties: Party[] = [
     bankAccount: "PK00MEZN0009876543210",
     contactPerson: "Zafar Iqbal",
     canAlsoBeVendor: false,
+    beneficiaryName: "Al-Barkat Cotton Factory (Pvt) Ltd",
+    region: "South Punjab",
+    territory: "Khanewal Zone",
+    ranking: "B",
+    manualNo: "",
+    debitLimit: 0,
+    creditLimit: 300000,
+    province: "Punjab",
+    hsCode: "",
+    efsCode: "",
+    isActive: true,
   },
   {
     id: "6210003",
@@ -136,6 +173,17 @@ export const mockParties: Party[] = [
     bankAccount: "",
     contactPerson: "Imran Sheikh",
     canAlsoBeVendor: true,
+    beneficiaryName: "",
+    region: "South Punjab",
+    territory: "Bahawalpur Zone",
+    ranking: "C",
+    manualNo: "",
+    debitLimit: 100000,
+    creditLimit: 100000,
+    province: "Punjab",
+    hsCode: "",
+    efsCode: "",
+    isActive: true,
   },
 ];
 
@@ -173,7 +221,40 @@ export function emptyParty(id: string): Party {
     stn: "",
     ntnCnic: "",
     bankAccount: "",
+    beneficiaryName: "",
     contactPerson: "",
     canAlsoBeVendor: false,
+    region: "",
+    territory: "",
+    ranking: "",
+    manualNo: "",
+    debitLimit: 0,
+    creditLimit: 0,
+    province: "Punjab",
+    hsCode: "",
+    efsCode: "",
+    isActive: true,
   };
+}
+
+/** Ranking options for the Parties Information popup. */
+export const partyRankings = ["A", "B", "C", "D"];
+export const provinces = ["Punjab", "Sindh", "KPK", "Balochistan", "Islamabad (ICT)", "AJK", "Gilgit-Baltistan"];
+
+/**
+ * A/C Extension: the digits of a party's ID after its sub head block —
+ * e.g. under Buyer (6200000) party 6210001 has extension "10001".
+ * The popup shows Parent Account + A/C Extension and computes Account No
+ * as their sum, exactly like the legacy desktop screen.
+ */
+export function accountExtensionOf(partyId: string, subHeadCode: string): string {
+  const n = parseInt(partyId, 10) - parseInt(subHeadCode || "0", 10);
+  return n > 0 ? String(n) : "";
+}
+
+export function computeAccountNo(subHeadCode: string, extension: string): string {
+  const base = parseInt(subHeadCode, 10) || 0;
+  const ext = parseInt(extension, 10) || 0;
+  if (!base || !ext) return "";
+  return String(base + ext);
 }

@@ -12,6 +12,8 @@ export type VoucherType =
   | "contra_bank_to_cash"
   | "ibft";
 
+export type DocumentStatus = "draft" | "posted" | "void";
+
 export type VoucherRecord = {
   id: string;
   voucherNo: string;
@@ -24,6 +26,8 @@ export type VoucherRecord = {
   whtAmount: number;
   netAmount: number;
   narration: string | null;
+  status: DocumentStatus;
+  voidReason: string | null;
 };
 
 /**
@@ -38,7 +42,7 @@ export async function fetchVouchers(filter?: {
   let query = supabase
     .from("vouchers")
     .select(
-      "id, voucher_no, voucher_type, voucher_date, party_id, bank_account, cheque_no, gross_amount, wht_amount, net_amount, narration"
+      "id, voucher_no, voucher_type, voucher_date, party_id, bank_account, cheque_no, gross_amount, wht_amount, net_amount, narration, status, void_reason"
     )
     .order("voucher_date", { ascending: false })
     .order("voucher_no", { ascending: false });
@@ -63,7 +67,33 @@ export async function fetchVouchers(filter?: {
     whtAmount: Number(row.wht_amount) || 0,
     netAmount: Number(row.net_amount) || 0,
     narration: row.narration,
+    status: (row.status as DocumentStatus | null) ?? "posted",
+    voidReason: row.void_reason,
   }));
+}
+
+/**
+ * Void a saved voucher instead of deleting it — the original entry,
+ * its lines, and who/when/why stay in the database and in the audit
+ * trail (see migration_19). A posted voucher can no longer be edited
+ * or hard-deleted at all; this is the only way to correct one.
+ */
+export async function voidVoucher(
+  id: string,
+  reason?: string
+): Promise<{ error: string | null }> {
+  if (!supabase) return { error: "Supabase is not configured." };
+  const { error } = await supabase.rpc("void_voucher", {
+    p_id: id,
+    p_reason: reason || null,
+  });
+  if (error && /function void_voucher/i.test(error.message)) {
+    return {
+      error:
+        "Voiding needs one database update. Run supabase/migration_19_document_lifecycle_and_audit.sql once in the Supabase SQL Editor, then try again.",
+    };
+  }
+  return { error: error?.message ?? null };
 }
 
 export type SimpleVoucherPayload = {
@@ -173,6 +203,7 @@ export type VoucherHeaderDraft = {
 
 export type FullVoucher = {
   id: string;
+  status: DocumentStatus;
   header: VoucherHeaderDraft;
   lines: (VoucherLineDraft & { id: string })[];
 };
@@ -266,7 +297,7 @@ export async function fetchVoucherWithLines(
 
   const { data: h, error: hErr } = await supabase
     .from("vouchers")
-    .select("id, voucher_no, voucher_type, voucher_date, cheque_no, cheque_date, narration")
+    .select("id, voucher_no, voucher_type, voucher_date, cheque_no, cheque_date, narration, status")
     .eq("id", id)
     .single();
   if (hErr || !h) return null;
@@ -280,6 +311,7 @@ export async function fetchVoucherWithLines(
 
   return {
     id: h.id,
+    status: (h.status as DocumentStatus | null) ?? "posted",
     header: {
       voucherNo: h.voucher_no,
       voucherType: h.voucher_type,

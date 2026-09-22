@@ -47,6 +47,30 @@ create table if not exists admin_users (
 );
 
 -- ------------------------------------------------------------
+-- Staff logins (User Access & Security) — one row per person the
+-- business owner has invited, besides themselves.
+-- ------------------------------------------------------------
+create table if not exists business_members (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references businesses(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  email text not null,
+  name text,
+  role text not null check (
+    role in ('admin', 'accountant', 'trader', 'viewer', 'custom')
+  ),
+  -- Only used when role = 'custom'; built-in roles get their modules
+  -- from a fixed map in the app (lib/team-data.ts).
+  module_keys text[] not null default '{}',
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (business_id, user_id)
+);
+
+create index if not exists idx_business_members_business on business_members(business_id);
+create index if not exists idx_business_members_user on business_members(user_id);
+
+-- ------------------------------------------------------------
 -- Helper functions used throughout RLS policies below
 -- ------------------------------------------------------------
 -- Resolves to the caller's business whether they're the owner, or a
@@ -237,30 +261,6 @@ create table if not exists parties_customers (
   updated_at timestamptz not null default now(),
   unique (business_id, party_id)
 );
-
--- ------------------------------------------------------------
--- Staff logins (User Access & Security) — one row per person the
--- business owner has invited, besides themselves.
--- ------------------------------------------------------------
-create table if not exists business_members (
-  id uuid primary key default gen_random_uuid(),
-  business_id uuid not null references businesses(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  email text not null,
-  name text,
-  role text not null check (
-    role in ('admin', 'accountant', 'trader', 'viewer', 'custom')
-  ),
-  -- Only used when role = 'custom'; built-in roles get their modules
-  -- from a fixed map in the app (lib/team-data.ts).
-  module_keys text[] not null default '{}',
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  unique (business_id, user_id)
-);
-
-create index if not exists idx_business_members_business on business_members(business_id);
-create index if not exists idx_business_members_user on business_members(user_id);
 
 -- Cross-table look-ups used by the businesses / business_members policies.
 -- They are SECURITY DEFINER so the look-up doesn't re-run row-level security

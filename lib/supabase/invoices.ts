@@ -34,6 +34,8 @@ export type InvoiceRecord = {
   brokerageAmount: number;
   netTotal: number;
   notes: string | null;
+  status: "draft" | "posted" | "void";
+  voidReason: string | null;
 };
 
 /**
@@ -49,7 +51,7 @@ export async function fetchInvoices(filter?: {
   let query = supabase
     .from("invoices")
     .select(
-      "id, invoice_no, invoice_category, invoice_type, invoice_date, party_id, subtotal, brokerage_amount, net_total, notes"
+      "id, invoice_no, invoice_category, invoice_type, invoice_date, party_id, subtotal, brokerage_amount, net_total, notes, status, void_reason"
     )
     .order("invoice_date", { ascending: false })
     .order("invoice_no", { ascending: false });
@@ -73,7 +75,31 @@ export async function fetchInvoices(filter?: {
     brokerageAmount: Number(row.brokerage_amount) || 0,
     netTotal: Number(row.net_total) || 0,
     notes: row.notes,
+    status: (row.status as InvoiceRecord["status"] | null) ?? "posted",
+    voidReason: row.void_reason,
   }));
+}
+
+/**
+ * Void a saved invoice instead of deleting it — see voidVoucher in
+ * lib/supabase/vouchers.ts for why (migration_19).
+ */
+export async function voidInvoice(
+  id: string,
+  reason?: string
+): Promise<{ error: string | null }> {
+  if (!supabase) return { error: "Supabase is not configured." };
+  const { error } = await supabase.rpc("void_invoice", {
+    p_id: id,
+    p_reason: reason || null,
+  });
+  if (error && /function void_invoice/i.test(error.message)) {
+    return {
+      error:
+        "Voiding needs one database update. Run supabase/migration_19_document_lifecycle_and_audit.sql once in the Supabase SQL Editor, then try again.",
+    };
+  }
+  return { error: error?.message ?? null };
 }
 
 export async function saveInvoice(

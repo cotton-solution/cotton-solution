@@ -26,6 +26,8 @@ export type DemoInvoice = {
   brokerageAmount: number;
   netTotal: number;
   notes: string | null;
+  status: "draft" | "posted" | "void";
+  voidReason: string | null;
 };
 
 const PREFIX: Record<InvoiceCategory, { purchase: string; sale: string }> = {
@@ -54,6 +56,8 @@ export function demoInvoices(category: InvoiceCategory): DemoInvoice[] {
       brokerageAmount: brokerage,
       netTotal: subtotal - brokerage,
       notes: i === 2 ? "Advance adjusted against contract" : null,
+      status: i === 5 ? "void" : "posted",
+      voidReason: i === 5 ? "Duplicate entry — re-issued as a new invoice" : null,
     });
   }
   return rows;
@@ -71,6 +75,8 @@ export type DemoVoucher = {
   whtAmount: number;
   netAmount: number;
   narration: string | null;
+  status: "draft" | "posted" | "void";
+  voidReason: string | null;
 };
 
 const VOUCHER_PREFIX: Record<VoucherType | "journal", string> = {
@@ -123,6 +129,8 @@ export function demoVouchers(): DemoVoucher[] {
       whtAmount: wht,
       netAmount: amount - wht,
       narration: i === 4 ? "Advance against next season's crop" : null,
+      status: i === 7 ? "void" : "posted",
+      voidReason: i === 7 ? "Wrong account selected — corrected below" : null,
     });
   }
   return rows;

@@ -120,4 +120,20 @@ export const reportData: Record<string, ReportConfig> = {
       ["Owner's Equity", "Equity", -1499300],
     ],
   },
+  "account-balances": {
+    title: "Accounts Balances",
+    description: "All accounts with a closing balance as of 12 Sep 2026",
+    columns: ["A/c No", "Account Name", "Type", "Opening", "Debit", "Credit", "Closing Balance"],
+    numericCols: [3, 4, 5, 6],
+    rows: [
+      ["1010001", "Cash in Hand", "Asset", 0, 260500, 110000, 150500],
+      ["1020001", "HBL Bank Account", "Asset", 950000, 650000, 271200, 1328800],
+      ["6210001", "Muhammad Ashraf & Sons", "Party", 0, 480000, 480000, 0],
+      ["6210003", "DHA Traders", "Party", 60000, 90000, 40000, 110000],
+      ["6500002", "Al-Barkat Cotton Factory (Vendor)", "Party", 0, 0, 180000, -180000],
+      ["4010001", "Brokerage Commission Income", "Income", 0, 0, 340000, -340000],
+      ["5010001", "Office & Admin Expenses", "Expense", 0, 24500, 0, 24500],
+      ["2010001", "Withholding Tax Payable", "Liability", 0, 0, 8200, -8200],
+    ],
+  },
 };
