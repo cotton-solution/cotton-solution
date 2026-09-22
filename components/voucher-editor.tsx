@@ -24,7 +24,7 @@ import {
 import {
   saveVoucherWithLines,
   fetchVoucherWithLines,
-  deleteVoucherCascade,
+  voidVoucher,
   fetchNextVoucherNumber,
   type VoucherLineDraft,
   type VoucherType,
@@ -102,6 +102,7 @@ export function VoucherEditor({
   const [voucherNo, setVoucherNo] = useState("…");
   const [numberReady, setNumberReady] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingStatus, setEditingStatus] = useState<"draft" | "posted" | "void" | null>(null);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [chequeNo, setChequeNo] = useState("");
   const [chequeDate, setChequeDate] = useState("");
@@ -168,6 +169,7 @@ export function VoucherEditor({
    *  a new page. */
   async function backToNewVoucher() {
     setEditingId(null);
+    setEditingStatus(null);
     resetForm();
     await loadNextNumber();
   }
@@ -347,12 +349,14 @@ export function VoucherEditor({
   }
 
   async function handleClear() {
+    // Clearing while editing an existing (already-saved) voucher only
+    // discards the unsaved changes in this form — it no longer deletes
+    // the saved voucher itself. A saved voucher can only be removed by
+    // voiding it (see handleVoid below), which keeps its audit trail.
     if (editingId) {
-      setSaving(true);
-      await deleteVoucherCascade(editingId);
-      setSaving(false);
       const freedNumber = voucherNo;
       setEditingId(null);
+      setEditingStatus(null);
       resetForm();
       setVoucherNo(freedNumber);
       setNumberReady(true);
@@ -369,6 +373,7 @@ export function VoucherEditor({
       return;
     }
     setEditingId(full.id);
+    setEditingStatus(full.status);
     setVoucherNo(full.header.voucherNo);
     setNumberReady(true);
     setDate(full.header.date);
@@ -507,16 +512,31 @@ export function VoucherEditor({
     }
   }
 
-  async function handleDelete() {
+  async function handleVoid() {
     if (!editingId) return;
     if (!confirmingDelete) {
       setConfirmingDelete(true);
       return;
     }
+    const reason = window.prompt(
+      "Reason for voiding this voucher (kept in the audit trail):"
+    );
+    if (reason === null) {
+      setConfirmingDelete(false);
+      return;
+    }
+    if (!reason.trim()) {
+      setError("A reason is required to void a posted voucher.");
+      return;
+    }
     setSaving(true);
-    await deleteVoucherCascade(editingId);
+    const { error: voidErr } = await voidVoucher(editingId, reason.trim());
     setSaving(false);
     setConfirmingDelete(false);
+    if (voidErr) {
+      setError(voidErr);
+      return;
+    }
     await backToNewVoucher();
   }
 
@@ -571,6 +591,19 @@ export function VoucherEditor({
             {editingId && (
               <span className="ml-2 rounded bg-amber-50 text-amber-700 px-1.5 py-0.5 text-[11px] font-medium">
                 Editing saved voucher
+              </span>
+            )}
+            {editingId && editingStatus && editingStatus !== "draft" && (
+              <span
+                className={`ml-2 rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                  editingStatus === "void"
+                    ? "bg-red-50 text-red-700"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {editingStatus === "void"
+                  ? "Void — read only"
+                  : "Posted — locked. Use Void to correct it."}
               </span>
             )}
           </p>
@@ -796,7 +829,10 @@ export function VoucherEditor({
 
       {/* Toolbar: Save / Clear / Open / Delete / Close, then Print & PDF */}
       <div className="flex flex-wrap gap-2">
-        <Button onClick={handleSave} disabled={saving || !numberReady}>
+        <Button
+          onClick={handleSave}
+          disabled={saving || !numberReady || (editingStatus !== null && editingStatus !== "draft")}
+        >
           {saving ? "Saving…" : "Save"}
         </Button>
         <Button variant="secondary" onClick={handleClear} disabled={saving}>
@@ -807,11 +843,11 @@ export function VoucherEditor({
         </Button>
         <Button
           variant="secondary"
-          onClick={handleDelete}
+          onClick={handleVoid}
           disabled={saving || !editingId}
           className={confirmingDelete ? "border-red-300 text-red-700 bg-red-50" : ""}
         >
-          {confirmingDelete ? "Confirm Delete?" : "Delete"}
+          {confirmingDelete ? "Confirm Void?" : "Void"}
         </Button>
         <Button variant="secondary" onClick={handleClose} disabled={saving}>
           Close

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   fetchInvoices,
+  voidInvoice,
   type InvoiceCategory,
   type InvoiceRecord,
 } from "@/lib/supabase/invoices";
@@ -30,8 +31,9 @@ export function InvoiceList({
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(defaultTypeFilter);
   const [selected, setSelected] = useState<Row | null>(null);
+  const [voidError, setVoidError] = useState<string | null>(null);
 
-  useEffect(() => {
+  function load() {
     let cancelled = false;
     setLoading(true);
     (isSupabaseConfigured
@@ -46,7 +48,25 @@ export function InvoiceList({
     return () => {
       cancelled = true;
     };
-  }, [category]);
+  }
+
+  useEffect(load, [category]);
+
+  async function handleVoid(reason: string) {
+    if (!selected) return;
+    if (!isSupabaseConfigured) {
+      setVoidError("Voiding needs Supabase to be configured — this is demo data.");
+      return;
+    }
+    const { error } = await voidInvoice(selected.id, reason);
+    if (error) {
+      setVoidError(error);
+      return;
+    }
+    setVoidError(null);
+    setSelected(null);
+    load();
+  }
 
   const partyName = (id: string | null) =>
     id ? parties.find((p) => p.id === id)?.name ?? id : "—";
@@ -90,7 +110,14 @@ export function InvoiceList({
             key: "no",
             header: "Invoice #",
             render: (r) => (
-              <span className="font-medium text-slate-900">{r.invoiceNo}</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="font-medium text-slate-900">{r.invoiceNo}</span>
+                {r.status === "void" && (
+                  <span className="rounded-full bg-red-50 border border-red-200 px-1.5 py-0.5 text-[10px] font-medium uppercase text-red-600">
+                    Void
+                  </span>
+                )}
+              </span>
             ),
             searchValue: (r) => r.invoiceNo,
           },
@@ -139,12 +166,21 @@ export function InvoiceList({
         )}
       />
 
+      {voidError && (
+        <div className="mx-4 mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700">
+          {voidError}
+        </div>
+      )}
+
       <RecordDetailDrawer
         open={!!selected}
         onClose={() => setSelected(null)}
         title={selected?.invoiceType === "sale" ? "Sale Invoice" : "Purchase Invoice"}
         reference={selected?.invoiceNo ?? ""}
         date={selected?.invoiceDate ?? ""}
+        status={selected?.status}
+        voidReason={selected?.voidReason}
+        onVoid={handleVoid}
         fields={
           selected
             ? [
