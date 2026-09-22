@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, UserRoundPlus, Database, CircleAlert } from "lucide-react";
+import { Search, UserRoundPlus, Database, CircleAlert, LayoutPanelTop } from "lucide-react";
+import { PartiesInformationDialog } from "@/components/parties-information-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -50,7 +51,9 @@ export default function PartyMasterPage() {
   const [sectorFilter, setSectorFilter] = useState("--- ALL SECTORS ---");
   const [nameSearch, setNameSearch] = useState("");
 
-  useEffect(() => {
+  const [partiesPopupOpen, setPartiesPopupOpen] = useState(false);
+
+  function loadParties() {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
     setLoading(true);
@@ -66,7 +69,9 @@ export default function PartyMasterPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }
+
+  useEffect(loadParties, []);
 
   const filteredParties = useMemo(() => {
     return parties.filter((p) => {
@@ -185,11 +190,26 @@ export default function PartyMasterPage() {
             Parties) &rarr; the party
           </p>
         </div>
-        <Button onClick={handleNew} className="shrink-0">
-          <UserRoundPlus size={16} />
-          New Party
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="secondary" onClick={() => setPartiesPopupOpen(true)}>
+            <LayoutPanelTop size={16} />
+            Open Popup
+          </Button>
+          <Button onClick={handleNew}>
+            <UserRoundPlus size={16} />
+            New Party
+          </Button>
+        </div>
       </div>
+
+      {partiesPopupOpen && (
+        <PartiesInformationDialog
+          parties={parties}
+          loading={loading}
+          onClose={() => setPartiesPopupOpen(false)}
+          onChanged={() => { loadParties(); }}
+        />
+      )}
 
       {/* Demo notice only — nothing about the backend is shown to real customers. */}
       {!isSupabaseConfigured && (

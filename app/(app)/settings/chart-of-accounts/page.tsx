@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, FolderPlus, Layers, Database, CircleAlert } from "lucide-react";
+import { Search, FolderPlus, Layers, Database, CircleAlert, Users } from "lucide-react";
+import { PartiesInformationDialog } from "@/components/parties-information-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -75,7 +76,8 @@ export default function ChartOfAccountsPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [nameSearch, setNameSearch] = useState("");
 
-  const { parties, refresh: refreshParties } = usePartyDirectory();
+  const { parties, loading: partiesLoading, refresh: refreshParties } = usePartyDirectory();
+  const [partiesPopupOpen, setPartiesPopupOpen] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -357,6 +359,10 @@ export default function ChartOfAccountsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
+          <Button variant="secondary" onClick={() => setPartiesPopupOpen(true)}>
+            <Users size={16} />
+            Parties Popup
+          </Button>
           <Button variant="secondary" onClick={() => startCreate("subhead")}>
             <Layers size={16} />
             Add Sub Head
@@ -367,6 +373,15 @@ export default function ChartOfAccountsPage() {
           </Button>
         </div>
       </div>
+
+      {partiesPopupOpen && (
+        <PartiesInformationDialog
+          parties={parties}
+          loading={partiesLoading}
+          onClose={() => setPartiesPopupOpen(false)}
+          onChanged={refreshParties}
+        />
+      )}
 
       {/* Demo notice only — nothing about the backend is shown to real customers. */}
       {!isSupabaseConfigured && (
