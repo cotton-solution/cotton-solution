@@ -86,7 +86,7 @@ begin
     insert into parties_customers(business_id, party_id, name) values (x.bid, '6210001', 'Party '||x.tag);
     insert into vouchers(business_id, voucher_no, voucher_type, voucher_date) values (x.bid, 'V-1', 'journal', current_date) returning id into v;
     insert into voucher_lines(voucher_id, account_code, debit) values (v, '1010001', 10);
-    insert into invoices(business_id, invoice_no, invoice_category, invoice_type, invoice_date) values (x.bid, 'I-1', 'general', 'sale', current_date) returning id into inv;
+    insert into invoices(business_id, invoice_no, invoice_category, invoice_type, invoice_date, party_id) values (x.bid, 'I-1', 'general', 'sale', current_date, '6210001') returning id into inv;
     insert into invoice_lines(invoice_id, description, qty, rate) values (inv, 'x', 1, 1);
     insert into inventory_items(business_id, sku, name) values (x.bid, 'S1', 'Item '||x.tag) returning id into item;
     insert into warehouses(business_id, name) values (x.bid, 'WH '||x.tag) returning id into wh;
@@ -94,7 +94,7 @@ begin
     insert into bank_accounts(business_id, account_name, bank_name) values (x.bid, 'Acc '||x.tag, 'Bank') returning id into ba;
     insert into bank_reconciliations(business_id, bank_account_id, statement_date) values (x.bid, ba, current_date);
     insert into expenses(business_id, category, amount) values (x.bid, 'Rent', 1);
-    insert into transactions(business_id, transaction_date, account_code, debit) values (x.bid, current_date, '1010001', 1);
+    insert into transactions(business_id, transaction_date, account_code, debit, reference_type, reference_id) values (x.bid, current_date, '1010001', 1, 'adjustment', gen_random_uuid());
     insert into quotations(business_id, quote_no) values (x.bid, 'Q-1') returning id into q;
     insert into quotation_lines(quotation_id, description) values (q, 'x');
     insert into purchase_orders(business_id, po_no) values (x.bid, 'PO-1') returning id into po;
@@ -119,7 +119,8 @@ select t.check('A sees only own parties', (select count(*) from parties_customer
 select t.check('A sees only own vouchers', (select count(*) from vouchers)=1);
 select t.check('A sees only own voucher_lines', (select count(*) from voucher_lines)=1);
 select t.check('A sees only own invoice_lines', (select count(*) from invoice_lines)=1);
-select t.check('A sees only own transactions (ledger)', (select count(*) from transactions)=1);
+select t.check('A sees only own transactions (ledger)', (select count(*) from transactions) > 0
+  and (select count(distinct business_id) from transactions) <= 1);
 select t.check('A sees only own stock_movements (inventory)', (select count(*) from stock_movements)=1);
 select t.check('A sees only own bank_reconciliations', (select count(*) from bank_reconciliations)=1);
 select t.check('A sees only own business row', (select count(*) from businesses)=1);
@@ -165,7 +166,8 @@ select t.done();
 select t.as_user(uc_admin) from t.ids;
 select t.check('platform admin sees only OWN workspace parties (not every tenant)', (select count(*) from parties_customers)=1);
 select t.check('platform admin sees only OWN workspace vouchers', (select count(*) from vouchers)=1);
-select t.check('platform admin sees only OWN workspace transactions', (select count(*) from transactions)=1);
+select t.check('platform admin sees only OWN workspace transactions', (select count(*) from transactions) > 0
+  and (select count(distinct business_id) from transactions) <= 1);
 select t.check('platform admin sees only OWN workspace inventory', (select count(*) from inventory_items)=1);
 select t.check('platform admin can still manage subscriptions (list businesses)', (select count(*) from businesses)>=3);
 select t.check('platform admin cannot write into tenant A',
