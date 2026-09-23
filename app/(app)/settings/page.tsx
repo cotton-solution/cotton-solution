@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, Building2, BookOpen, ShieldCheck } from "lucide-react";
+import { ArrowRight, Building2, BookOpen, ShieldCheck, Landmark } from "lucide-react";
 
 const cards = [
   { label: "Company Profile", href: "/settings/company-profile", icon: Building2, description: "Business details, logo, tax info & currency" },
   { label: "Chart of Accounts", href: "/settings/chart-of-accounts", icon: BookOpen, description: "Account codes, types and opening balances" },
+  { label: "Posting Accounts", href: "/settings/posting-accounts", icon: Landmark, description: "Which ledger account each type of sale, purchase & expense posts to" },
   { label: "User Permissions", href: "/settings/user-access", icon: ShieldCheck, description: "Role-based access control for your team" },
 ];
 

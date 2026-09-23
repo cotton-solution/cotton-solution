@@ -18,7 +18,7 @@ export default function ReportDetailPage({
   // (useSearchParams), which Next.js requires a Suspense boundary for.
   return (
     <Suspense fallback={null}>
-      <ReportViewer report={report} />
+      <ReportViewer report={report} slug={params.slug} />
     </Suspense>
   );
 }
