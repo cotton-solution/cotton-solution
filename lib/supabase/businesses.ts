@@ -32,6 +32,7 @@ export type Business = {
   createdAt: string;
   currency: string;
   taxNumber: string | null;
+  gstNumber: string | null;
   address: string | null;
   website: string | null;
   logoUrl: string | null;
@@ -59,6 +60,7 @@ type BusinessRow = {
   created_at: string;
   currency?: string;
   tax_number?: string | null;
+  gst_number?: string | null;
   address?: string | null;
   website?: string | null;
   logo_url?: string | null;
@@ -80,6 +82,7 @@ function rowToBusiness(row: BusinessRow, profileReady = true): Business {
     createdAt: row.created_at,
     currency: row.currency ?? "PKR",
     taxNumber: row.tax_number ?? null,
+    gstNumber: row.gst_number ?? null,
     address: row.address ?? null,
     website: row.website ?? null,
     logoUrl: row.logo_url ?? null,
@@ -90,7 +93,12 @@ function rowToBusiness(row: BusinessRow, profileReady = true): Business {
 const CORE_COLUMNS =
   "id, owner_id, name, contact_email, contact_phone, business_category, plan, subscription_status, subscription_expires_at, billing_status, last_billed_at, created_at";
 const PROFILE_COLUMNS = "currency, tax_number, address, website, logo_url";
-const BUSINESS_COLUMNS = `${CORE_COLUMNS}, ${PROFILE_COLUMNS}`;
+// gst_number arrives with migration_22, after the rest of the profile
+// columns (migration_7) — kept separate so a business can still load
+// (and the rest of the profile still work) before that migration runs.
+const GST_COLUMN = "gst_number";
+const BUSINESS_COLUMNS = `${CORE_COLUMNS}, ${PROFILE_COLUMNS}, ${GST_COLUMN}`;
+const BUSINESS_COLUMNS_NO_GST = `${CORE_COLUMNS}, ${PROFILE_COLUMNS}`;
 
 export type MyBusinessResult = {
   business: Business | null;
@@ -134,13 +142,18 @@ export async function fetchMyBusinessWithStatus(): Promise<MyBusinessResult> {
     let profileReady = true;
     let res = await query(BUSINESS_COLUMNS, owner);
     if (res.error) {
-      const core = await query(CORE_COLUMNS, owner);
-      if (core.error) {
-        lastError = core.error.message;
-        continue;
+      const noGst = await query(BUSINESS_COLUMNS_NO_GST, owner);
+      if (!noGst.error) {
+        res = noGst;
+      } else {
+        const core = await query(CORE_COLUMNS, owner);
+        if (core.error) {
+          lastError = core.error.message;
+          continue;
+        }
+        res = core;
+        profileReady = false;
       }
-      res = core;
-      profileReady = false;
     }
     const rows = (res.data ?? []) as unknown as BusinessRow[];
     // With an owner filter one row is the answer; without it, only trust an
@@ -197,14 +210,21 @@ export async function fetchAllBusinesses(): Promise<Business[]> {
     .select(BUSINESS_COLUMNS)
     .order("created_at", { ascending: false });
   if (res.error) {
-    // migration_7 (profile columns) not run yet — still list the businesses.
-    const core = await supabase
+    const noGst = await supabase
       .from("businesses")
-      .select(CORE_COLUMNS)
+      .select(BUSINESS_COLUMNS_NO_GST)
       .order("created_at", { ascending: false });
-    if (core.error) return [];
-    res = core as unknown as typeof res;
-    profileReady = false;
+    if (!noGst.error) {
+      res = noGst as unknown as typeof res;
+    } else {
+      const core = await supabase
+        .from("businesses")
+        .select(CORE_COLUMNS)
+        .order("created_at", { ascending: false });
+      if (core.error) return [];
+      res = core as unknown as typeof res;
+      profileReady = false;
+    }
   }
   if (!res.data) return [];
   return (res.data as unknown as BusinessRow[]).map((r) =>
@@ -248,6 +268,7 @@ export async function updateBusinessProfile(
     category?: BusinessCategory | null;
     currency?: string;
     taxNumber?: string | null;
+    gstNumber?: string | null;
     address?: string | null;
     website?: string | null;
     logoUrl?: string | null;
@@ -269,6 +290,7 @@ export async function updateBusinessProfile(
         : {}),
       ...(updates.currency !== undefined ? { currency: updates.currency } : {}),
       ...(updates.taxNumber !== undefined ? { tax_number: updates.taxNumber } : {}),
+      ...(updates.gstNumber !== undefined ? { gst_number: updates.gstNumber } : {}),
       ...(updates.address !== undefined ? { address: updates.address } : {}),
       ...(updates.website !== undefined ? { website: updates.website } : {}),
       ...(updates.logoUrl !== undefined ? { logo_url: updates.logoUrl } : {}),
@@ -276,7 +298,15 @@ export async function updateBusinessProfile(
     .eq("id", businessId)
     .select("id");
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (/gst_number/i.test(error.message)) {
+      return {
+        error:
+          "GST number needs one database update. Run supabase/migration_22_business_logo_and_gst.sql once in the Supabase SQL Editor, then save again.",
+      };
+    }
+    return { error: error.message };
+  }
   // Row-level security doesn't raise an error when it blocks an update —
   // it just matches zero rows. Treat that as "not allowed".
   if (!data || data.length === 0) {
@@ -285,6 +315,40 @@ export async function updateBusinessProfile(
     };
   }
   return { error: null };
+}
+
+/**
+ * Self-service logo upload for Settings → Company Profile: uploads to
+ * the business's own folder in the public "business-logos" bucket
+ * (migration_22) and returns its public URL. The caller still has to
+ * save that URL onto the business record (updateMyCompanyProfile).
+ */
+export async function uploadBusinessLogo(
+  businessId: string,
+  file: File
+): Promise<{ url: string | null; error: string | null }> {
+  if (!supabase) return { url: null, error: "Supabase is not configured." };
+
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${businessId}/logo-${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("business-logos")
+    .upload(path, file, { cacheControl: "3600", upsert: false });
+
+  if (uploadError) {
+    if (/bucket not found/i.test(uploadError.message)) {
+      return {
+        url: null,
+        error:
+          "Logo upload needs one database update. Run supabase/migration_22_business_logo_and_gst.sql once in the Supabase SQL Editor, then try again.",
+      };
+    }
+    return { url: null, error: uploadError.message };
+  }
+
+  const { data } = supabase.storage.from("business-logos").getPublicUrl(path);
+  return { url: data.publicUrl, error: null };
 }
 
 /**

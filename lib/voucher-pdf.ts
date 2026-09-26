@@ -24,6 +24,7 @@ export type VoucherPdfData = {
     phone?: string | null;
     email?: string | null;
     taxNumber?: string | null;
+    gstNumber?: string | null;
   };
   /** PNG bytes of the business logo, if it could be loaded. */
   logoPng?: Uint8Array | null;
@@ -227,7 +228,12 @@ export async function buildVoucherPdf(data: VoucherPdfData): Promise<Uint8Array>
     [
       data.business.phone && `Tel: ${data.business.phone}`,
       data.business.email && `Email: ${data.business.email}`,
-      data.business.taxNumber && `NTN / Tax No: ${data.business.taxNumber}`,
+    ]
+      .filter(Boolean)
+      .join("  |  "),
+    [
+      data.business.taxNumber && `NTN: ${data.business.taxNumber}`,
+      data.business.gstNumber && `GST: ${data.business.gstNumber}`,
     ]
       .filter(Boolean)
       .join("  |  "),
