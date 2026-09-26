@@ -11,6 +11,103 @@ export type LedgerEntry = {
   narration: string | null;
 };
 
+export type AccountLedgerReport = {
+  accountCode: string;
+  accountName: string;
+  accountAddress: string | null;
+  accountContact: string | null;
+  openingBalance: number;
+  entries: (LedgerEntry & { balance: number; voucherNo: string })[];
+  totalDebit: number;
+  totalCredit: number;
+  closingBalance: number;
+};
+
+/**
+ * Everything the printable Account Ledger report needs for one
+ * account: who they are (party address/contact, or the Chart of
+ * Accounts head's name), the balance carried in from before the
+ * selected range, and each entry in range with a running balance —
+ * exactly the shape of the old desktop software's ledger printout.
+ */
+export async function fetchAccountLedgerReport(
+  accountCode: string,
+  range?: { from?: string; to?: string }
+): Promise<AccountLedgerReport | null> {
+  if (!supabase) return null;
+
+  const [{ data: party }, { data: coa }] = await Promise.all([
+    supabase
+      .from("parties_customers")
+      .select("name, address, city, mobile, phone")
+      .eq("party_id", accountCode)
+      .maybeSingle(),
+    supabase.from("chart_of_accounts").select("name").eq("code", accountCode).maybeSingle(),
+  ]);
+
+  const accountName = party?.name ?? coa?.name ?? accountCode;
+  const accountAddress = party ? [party.address, party.city].filter(Boolean).join(", ") || null : null;
+  const accountContact = party ? [party.mobile, party.phone].filter(Boolean).join(" / ") || null : null;
+
+  // Opening balance = everything posted before the range starts.
+  let openingBalance = 0;
+  if (range?.from) {
+    const { data: before } = await supabase
+      .from("transactions")
+      .select("debit, credit")
+      .eq("account_code", accountCode)
+      .lt("transaction_date", range.from);
+    openingBalance = (before ?? []).reduce(
+      (sum, r) => sum + (Number(r.debit) || 0) - (Number(r.credit) || 0),
+      0
+    );
+  }
+
+  const entries = await fetchAccountLedger(accountCode, range);
+
+  // Resolve each entry's reference into the human voucher/invoice number
+  // shown in the "Voucher #" column, instead of a raw internal id.
+  const voucherIds = entries.filter((e) => e.referenceType === "voucher").map((e) => e.referenceId);
+  const invoiceIds = entries.filter((e) => e.referenceType === "invoice").map((e) => e.referenceId);
+  const [{ data: voucherRows }, { data: invoiceRows }] = await Promise.all([
+    voucherIds.length
+      ? supabase.from("vouchers").select("id, voucher_no").in("id", voucherIds)
+      : Promise.resolve({ data: [] as { id: string; voucher_no: string }[] }),
+    invoiceIds.length
+      ? supabase.from("invoices").select("id, invoice_no").in("id", invoiceIds)
+      : Promise.resolve({ data: [] as { id: string; invoice_no: string }[] }),
+  ]);
+  const voucherNoById = new Map((voucherRows ?? []).map((v) => [v.id, v.voucher_no]));
+  const invoiceNoById = new Map((invoiceRows ?? []).map((v) => [v.id, v.invoice_no]));
+  const referenceNo = (e: LedgerEntry) =>
+    e.referenceType === "voucher"
+      ? voucherNoById.get(e.referenceId) ?? "—"
+      : e.referenceType === "invoice"
+      ? invoiceNoById.get(e.referenceId) ?? "—"
+      : "—";
+
+  let running = openingBalance;
+  const withBalance = entries.map((e) => {
+    running += e.debit - e.credit;
+    return { ...e, balance: running, voucherNo: referenceNo(e) };
+  });
+
+  const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
+  const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
+
+  return {
+    accountCode,
+    accountName,
+    accountAddress,
+    accountContact,
+    openingBalance,
+    entries: withBalance,
+    totalDebit,
+    totalCredit,
+    closingBalance: running,
+  };
+}
+
 /**
  * Every posted (and reversed-if-voided) entry for one account, straight
  * from `transactions` — the ledger a voucher/invoice/expense actually
