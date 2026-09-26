@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ReportConfig } from "@/lib/report-data";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchAccountLedger, fetchTrialBalance } from "@/lib/supabase/ledger";
+import { fetchAccountLedgerReport, fetchTrialBalance, type AccountLedgerReport } from "@/lib/supabase/ledger";
+import { AccountLedgerReportView } from "@/components/account-ledger-report";
 
 function formatCell(value: string | number, isNumeric: boolean) {
   if (!isNumeric || typeof value !== "number") return value;
@@ -74,6 +75,10 @@ export function ReportViewer({ report, slug }: { report: ReportConfig; slug?: st
   const [liveColumns, setLiveColumns] = useState<string[] | null>(null);
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveEmpty, setLiveEmpty] = useState(false);
+  // The Account Ledger report renders its own printable layout
+  // (letterhead + opening balance + running balance) rather than the
+  // generic table used by every other report.
+  const [ledgerReport, setLedgerReport] = useState<AccountLedgerReport | null>(null);
 
   const accountRef = searchParams.get("account");
   const accountLabel = searchParams.get("accountLabel") ?? "";
@@ -88,25 +93,11 @@ export function ReportViewer({ report, slug }: { report: ReportConfig; slug?: st
     if (slug === "account-ledger" && accountRef) {
       const code = accountRef.replace(/^(coa|party):/, "");
       setLiveLoading(true);
-      fetchAccountLedger(code, {
+      fetchAccountLedgerReport(code, {
         from: singleDate ?? rangeFrom,
         to: singleDate ?? rangeTo,
-      }).then((entries) => {
-        let balance = 0;
-        const rows = entries.map((e) => {
-          balance += e.debit - e.credit;
-          return [
-            e.date,
-            e.referenceType,
-            e.narration ?? "",
-            e.debit || "",
-            e.credit || "",
-            balance,
-          ] as (string | number)[];
-        });
-        setLiveColumns(["Date", "Reference", "Narration", "Debit", "Credit", "Balance"]);
-        setLiveRows(rows);
-        setLiveEmpty(rows.length === 0);
+      }).then((rep) => {
+        setLedgerReport(rep);
         setLiveLoading(false);
       });
     } else if (slug === "account-balances") {
@@ -139,14 +130,14 @@ export function ReportViewer({ report, slug }: { report: ReportConfig; slug?: st
   }, [slug, accountRef, dateMode, rangeFrom, rangeTo, singleDate]);
 
   const isLiveCapableSlug = slug === "account-ledger" || slug === "account-balances";
-  const usingLiveData = liveColumns !== null;
-  const columns = usingLiveData ? liveColumns! : report.columns;
-  const rows = usingLiveData
+  const usingLiveData = liveColumns !== null || ledgerReport !== null;
+  const columns = liveColumns ?? report.columns;
+  const rows = liveColumns
     ? liveRows!
     : isSupabaseConfigured && isLiveCapableSlug
     ? [] // a real business's own books — never show illustrative mock numbers here
     : report.rows;
-  const numericCols = usingLiveData ? [3, 4, 5] : report.numericCols;
+  const numericCols = liveColumns ? [3, 4, 5] : report.numericCols;
 
   function handleExportCsv() {
     const header = columns.join(",");
@@ -192,100 +183,130 @@ export function ReportViewer({ report, slug }: { report: ReportConfig; slug?: st
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-          <div>
-            <Label htmlFor="from-date">From Date</Label>
-            <Input
-              id="from-date"
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="to-date">To Date</Label>
-            <Input
-              id="to-date"
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button className="flex-1 sm:flex-none">Generate</Button>
-            <Button
-              variant="secondary"
-              onClick={() => window.print()}
-              aria-label="Print report"
-            >
-              <Printer size={16} />
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleExportCsv}
-              aria-label="Export as CSV"
-            >
-              <Download size={16} />
-            </Button>
-          </div>
-        </div>
-      </div>
+      {slug === "account-ledger" ? (
+        <>
+          {accountRef && (
+            <div className="flex justify-end print:hidden">
+              <Button
+                variant="secondary"
+                onClick={() => window.print()}
+                aria-label="Print ledger"
+              >
+                <Printer size={16} />
+                Print
+              </Button>
+            </div>
+          )}
 
-      <div className="rounded-xl border border-slate-200 bg-white shadow-card overflow-hidden">
-        {liveLoading && (
-          <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500 border-b border-slate-100">
-            <Loader2 size={14} className="animate-spin" />
-            Loading the ledger…
+          {liveLoading && (
+            <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500 rounded-xl border border-slate-200 bg-white shadow-card">
+              <Loader2 size={14} className="animate-spin" />
+              Loading the ledger…
+            </div>
+          )}
+
+          {!liveLoading && ledgerReport && (
+            <AccountLedgerReportView report={ledgerReport} filterLabel={activeFilters.join(" · ") || "All Dates"} />
+          )}
+        </>
+      ) : (
+        <>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+              <div>
+                <Label htmlFor="from-date">From Date</Label>
+                <Input
+                  id="from-date"
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="to-date">To Date</Label>
+                <Input
+                  id="to-date"
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button className="flex-1 sm:flex-none">Generate</Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => window.print()}
+                  aria-label="Print report"
+                >
+                  <Printer size={16} />
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleExportCsv}
+                  aria-label="Export as CSV"
+                >
+                  <Download size={16} />
+                </Button>
+              </div>
+            </div>
           </div>
-        )}
-        {!liveLoading && usingLiveData && liveEmpty && (
-          <div className="px-4 py-6 text-sm text-slate-400 text-center">
-            No ledger entries yet for this selection.
-          </div>
-        )}
-        <div className="overflow-x-auto thin-scrollbar">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                {columns.map((col, i) => (
-                  <th
-                    key={col}
-                    className={cn(
-                      "px-4 py-3 font-medium text-slate-600 whitespace-nowrap",
-                      numericCols?.includes(i)
-                        ? "text-right"
-                        : "text-left"
-                    )}
-                  >
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((row, ri) => (
-                <tr key={ri} className="hover:bg-slate-50/60">
-                  {row.map((cell, ci) => {
-                    const isNumeric = numericCols?.includes(ci);
-                    return (
-                      <td
-                        key={ci}
+
+          <div className="rounded-xl border border-slate-200 bg-white shadow-card overflow-hidden">
+            {liveLoading && (
+              <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-500 border-b border-slate-100">
+                <Loader2 size={14} className="animate-spin" />
+                Loading the ledger…
+              </div>
+            )}
+            {!liveLoading && usingLiveData && liveEmpty && (
+              <div className="px-4 py-6 text-sm text-slate-400 text-center">
+                No ledger entries yet for this selection.
+              </div>
+            )}
+            <div className="overflow-x-auto thin-scrollbar">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    {columns.map((col, i) => (
+                      <th
+                        key={col}
                         className={cn(
-                          "px-4 py-3 whitespace-nowrap text-slate-700",
-                          isNumeric && "text-right tabular-nums"
+                          "px-4 py-3 font-medium text-slate-600 whitespace-nowrap",
+                          numericCols?.includes(i)
+                            ? "text-right"
+                            : "text-left"
                         )}
                       >
-                        {formatCell(cell, !!isNumeric)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rows.map((row, ri) => (
+                    <tr key={ri} className="hover:bg-slate-50/60">
+                      {row.map((cell, ci) => {
+                        const isNumeric = numericCols?.includes(ci);
+                        return (
+                          <td
+                            key={ci}
+                            className={cn(
+                              "px-4 py-3 whitespace-nowrap text-slate-700",
+                              isNumeric && "text-right tabular-nums"
+                            )}
+                          >
+                            {formatCell(cell, !!isNumeric)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
