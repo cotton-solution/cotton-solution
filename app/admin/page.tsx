@@ -249,7 +249,21 @@ function AccountsTable({
             )}
             {businesses.map((b) => (
               <tr key={b.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-2.5 font-medium text-slate-900">{b.name}</td>
+                <td className="px-4 py-2.5 font-medium text-slate-900">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 overflow-hidden">
+                      {b.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={b.logoUrl} alt={b.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-[10px] font-semibold text-slate-400">
+                          {b.name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <span className="truncate">{b.name}</span>
+                  </div>
+                </td>
                 <td className="px-4 py-2.5 text-slate-600">
                   {categoryLabel(b.category)}
                 </td>
@@ -412,10 +426,13 @@ function ViewBusinessModal({
   onClose: () => void;
 }) {
   const rows: [string, string][] = [
-    ["Business", business.name],
     ["Category", categoryLabel(business.category)],
     ["Contact Email", business.contactEmail ?? "—"],
     ["Contact Phone", business.contactPhone ?? "—"],
+    ["Address", business.address ?? "—"],
+    ["NTN", business.taxNumber ?? "—"],
+    ["GST / STRN", business.gstNumber ?? "—"],
+    ["Website", business.website ?? "—"],
     ["Plan", business.plan],
     ["Subscription Status", business.subscriptionStatus],
     ["Expires On", business.subscriptionExpiresAt ?? "—"],
@@ -430,6 +447,28 @@ function ViewBusinessModal({
   ];
   return (
     <Modal title="Business details" onClose={onClose}>
+      <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+          {business.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={business.logoUrl}
+              alt={business.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="text-sm font-semibold text-slate-400">
+              {business.name.slice(0, 2).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900 truncate">{business.name}</p>
+          <p className="text-xs text-slate-400">
+            {business.logoUrl ? "Logo set by the business" : "No logo uploaded yet"}
+          </p>
+        </div>
+      </div>
       <dl className="space-y-2.5 text-sm">
         {rows.map(([k, v]) => (
           <div key={k} className="flex justify-between gap-4">

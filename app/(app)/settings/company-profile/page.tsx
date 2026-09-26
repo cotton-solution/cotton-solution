@@ -10,6 +10,8 @@ import {
   Landmark,
   MapPin,
   FileText,
+  ImagePlus,
+  Loader2,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,7 @@ import { BusinessLogo } from "@/components/business-mark";
 import { useBusiness } from "@/components/business-provider";
 import {
   updateMyCompanyProfile,
+  uploadBusinessLogo,
   BUSINESS_CATEGORY_LABELS,
   type BusinessCategory,
 } from "@/lib/supabase/businesses";
@@ -60,11 +63,14 @@ export default function CompanyProfilePage() {
   const { business, loading, error: loadError, refresh } = useBusiness();
 
   const [logoUrl, setLogoUrl] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [category, setCategory] = useState<BusinessCategory | "">("");
   const [currency, setCurrency] = useState("PKR");
   const [taxNumber, setTaxNumber] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
   const [address, setAddress] = useState("");
   const [website, setWebsite] = useState("");
   const [saving, setSaving] = useState(false);
@@ -79,6 +85,7 @@ export default function CompanyProfilePage() {
     setCategory(business.category ?? "");
     setCurrency(business.currency);
     setTaxNumber(business.taxNumber ?? "");
+    setGstNumber(business.gstNumber ?? "");
     setAddress(business.address ?? "");
     setWebsite(business.website ?? "");
   }, [business]);
@@ -92,10 +99,34 @@ export default function CompanyProfilePage() {
       category !== (business.category ?? "") ||
       currency !== business.currency ||
       taxNumber !== (business.taxNumber ?? "") ||
+      gstNumber !== (business.gstNumber ?? "") ||
       address !== (business.address ?? "") ||
       website !== (business.website ?? "")
     );
-  }, [business, logoUrl, contactEmail, contactPhone, category, currency, taxNumber, address, website]);
+  }, [business, logoUrl, contactEmail, contactPhone, category, currency, taxNumber, gstNumber, address, website]);
+
+  async function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !business) return;
+    setLogoUploadError(null);
+    setUploadingLogo(true);
+    const { url, error: err } = await uploadBusinessLogo(business.id, file);
+    setUploadingLogo(false);
+    if (err || !url) {
+      setLogoUploadError(err ?? "Upload failed.");
+      return;
+    }
+    setLogoUrl(url);
+    // Save immediately so a logo change to the admin's view doesn't wait
+    // on the rest of the form's unrelated pending edits.
+    const { error: saveErr } = await updateMyCompanyProfile(business.id, { logoUrl: url });
+    if (saveErr) {
+      setLogoUploadError(saveErr);
+      return;
+    }
+    await refresh();
+  }
 
   async function handleSave() {
     if (!business) return;
@@ -109,6 +140,7 @@ export default function CompanyProfilePage() {
       category: category || null,
       currency,
       taxNumber: taxNumber.trim() || null,
+      gstNumber: gstNumber.trim() || null,
       address: address.trim() || null,
       website: website.trim() || null,
     });
@@ -130,6 +162,7 @@ export default function CompanyProfilePage() {
     setCategory(business.category ?? "");
     setCurrency(business.currency);
     setTaxNumber(business.taxNumber ?? "");
+    setGstNumber(business.gstNumber ?? "");
     setAddress(business.address ?? "");
     setWebsite(business.website ?? "");
     setError(null);
@@ -140,7 +173,9 @@ export default function CompanyProfilePage() {
     [contactPhone.trim() && `Tel: ${contactPhone.trim()}`, contactEmail.trim()]
       .filter(Boolean)
       .join("   "),
-    taxNumber.trim() && `NTN / Tax No: ${taxNumber.trim()}`,
+    [taxNumber.trim() && `NTN: ${taxNumber.trim()}`, gstNumber.trim() && `GST: ${gstNumber.trim()}`]
+      .filter(Boolean)
+      .join("   "),
   ].filter(Boolean) as string[];
 
   return (
@@ -220,16 +255,38 @@ export default function CompanyProfilePage() {
                 </div>
 
                 <div>
-                  <Label>Logo URL</Label>
+                  <Label>Logo</Label>
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 h-10 text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer">
+                      {uploadingLogo ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <ImagePlus size={14} />
+                      )}
+                      {uploadingLogo ? "Uploading…" : "Upload logo"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleLogoFile}
+                        disabled={uploadingLogo}
+                      />
+                    </label>
+                  </div>
+                  {logoUploadError && (
+                    <p className="mt-1.5 text-xs text-red-600">{logoUploadError}</p>
+                  )}
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    PNG or JPG, square works best. Uploading saves it right
+                    away — your admin and team see it update immediately.
+                    Or paste a link to an image hosted elsewhere:
+                  </p>
                   <Input
                     value={logoUrl}
                     onChange={(e) => setLogoUrl(e.target.value)}
                     placeholder="https://…/logo.png"
+                    className="mt-1.5"
                   />
-                  <p className="mt-1.5 text-xs text-slate-400">
-                    Paste a link to a square image (PNG or JPG) you&apos;ve
-                    hosted elsewhere — file upload isn&apos;t available yet.
-                  </p>
                 </div>
               </div>
             </div>
@@ -276,7 +333,7 @@ export default function CompanyProfilePage() {
             title="Business & tax"
             description="Type of business, registration and default currency."
           >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Business Category</Label>
                 <Select
@@ -300,11 +357,19 @@ export default function CompanyProfilePage() {
                 </Select>
               </div>
               <div>
-                <Label>Tax Registration No.</Label>
+                <Label>NTN (National Tax Number)</Label>
                 <Input
                   value={taxNumber}
                   onChange={(e) => setTaxNumber(e.target.value)}
-                  placeholder="NTN / STRN"
+                  placeholder="e.g. 1234567-8"
+                />
+              </div>
+              <div>
+                <Label>GST / Sales Tax Registration No.</Label>
+                <Input
+                  value={gstNumber}
+                  onChange={(e) => setGstNumber(e.target.value)}
+                  placeholder="STRN"
                 />
               </div>
             </div>
