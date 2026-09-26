@@ -470,6 +470,7 @@ export function VoucherEditor({
         phone: business?.contactPhone,
         email: business?.contactEmail,
         taxNumber: business?.taxNumber,
+        gstNumber: business?.gstNumber,
       },
       logoPng: await loadLogoAsPng(business?.logoUrl),
       title,
