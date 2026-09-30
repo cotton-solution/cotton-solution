@@ -402,6 +402,25 @@ as $$
     from tenant t
    where not exists (select 1 from pg_index i
                       where i.indrelid = t.oid and i.indkey[0] = t.bid_attnum)
+  union all
+  -- 5. a SECURITY DEFINER function runs with the owner's rights and
+  --    ignores RLS. If a signed-in user can call it directly (Supabase
+  --    exposes every public function as an RPC), it must be one of the
+  --    known-safe helpers that only ever look at the caller's own
+  --    business — otherwise any tenant could use it against any other.
+  select 'CRITICAL', (p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')')::text,
+         'SECURITY DEFINER function is callable by signed-in users and is not on the safe list (cross-tenant risk)'
+    from pg_proc p
+   where p.pronamespace = 'public'::regnamespace
+     and p.prosecdef
+     and p.prorettype <> 'trigger'::regtype
+     and exists (select 1 from pg_roles where rolname = 'authenticated')
+     and has_function_privilege('authenticated', p.oid, 'execute')
+     and p.proname <> all (array[
+       'my_business_id', 'owns_business', 'is_admin', 'is_business_owner',
+       'is_member_of', 'can_edit_company_profile', 'can_manage_staff',
+       'has_module_access', 'set_opening_balance'
+     ])
 $$;
 
 revoke all on function audit_tenant_isolation() from public, anon, authenticated;

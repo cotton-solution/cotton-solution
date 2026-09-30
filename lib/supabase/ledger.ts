@@ -49,21 +49,38 @@ export async function fetchAccountLedgerReport(
   const accountAddress = party ? [party.address, party.city].filter(Boolean).join(", ") || null : null;
   const accountContact = party ? [party.mobile, party.phone].filter(Boolean).join(" / ") || null : null;
 
-  // Opening balance = everything posted before the range starts.
-  let openingBalance = 0;
+  // Opening balance = whatever was entered via Settings → Opening
+  // Balances (migration_23; always before any real transaction) plus
+  // anything else posted before the range starts.
+  const OPENING_BALANCE_DATE = "2000-01-01";
+  const { data: openingRows } = await supabase
+    .from("transactions")
+    .select("debit, credit")
+    .eq("account_code", accountCode)
+    .eq("reference_type", "opening_balance");
+  let openingBalance = (openingRows ?? []).reduce(
+    (sum, r) => sum + (Number(r.debit) || 0) - (Number(r.credit) || 0),
+    0
+  );
   if (range?.from) {
     const { data: before } = await supabase
       .from("transactions")
       .select("debit, credit")
       .eq("account_code", accountCode)
+      .neq("reference_type", "opening_balance")
+      .gt("transaction_date", OPENING_BALANCE_DATE)
       .lt("transaction_date", range.from);
-    openingBalance = (before ?? []).reduce(
+    openingBalance += (before ?? []).reduce(
       (sum, r) => sum + (Number(r.debit) || 0) - (Number(r.credit) || 0),
       0
     );
   }
 
-  const entries = await fetchAccountLedger(accountCode, range);
+  // The opening-balance posting itself is never shown as an ordinary
+  // row — it's already folded into the Opening Balance line above.
+  const entries = (await fetchAccountLedger(accountCode, range)).filter(
+    (e) => e.referenceType !== "opening_balance"
+  );
 
   // Resolve each entry's reference into the human voucher/invoice number
   // shown in the "Voucher #" column, instead of a raw internal id.

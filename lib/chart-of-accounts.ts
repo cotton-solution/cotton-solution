@@ -1,10 +1,12 @@
+import type { AccountType } from "@/lib/coa-data";
+
 export const bankAccounts = [
   "HBL - Multan Cotton Market Branch (...4567)",
   "MCB - Vehari Branch (...8821)",
   "Meezan Bank - Khanewal Branch (...3345)",
 ];
 
-export type JournalAccount = { code: string; name: string };
+export type JournalAccount = { code: string; name: string; accountType?: AccountType };
 
 export const journalAccounts: JournalAccount[] = [
   { code: "1010001", name: "Cash in Hand" },

@@ -53,12 +53,14 @@ export function useLedgerAccounts(): {
       label: a.name,
       sublabel: a.code,
       kind: "coa",
+      accountType: a.accountType,
     }));
     const partyRows: LedgerAccount[] = parties.map((p) => ({
       ref: partyRef(p.id),
       label: p.name,
       sublabel: p.id,
       kind: "party",
+      accountType: "party",
     }));
     // Parties first — they're who most voucher lines are written
     // against day to day; expense/income heads still show right below.

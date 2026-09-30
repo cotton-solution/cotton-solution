@@ -688,3 +688,41 @@ Notes:
   first three Party sub heads; Sellers automatically count as vendors. Sub heads are never
   offered as accounts in vouchers. **Run `supabase/migration_15_coa_sub_heads.sql` once**
   (it replaces migration_14, which is no longer needed).
+
+## Multi-tenant SaaS core — migrations 16–24 (run in this order)
+
+Run each once in the Supabase SQL Editor, **in order**, after `migration_15`.
+Each is idempotent and safe on a live project.
+
+| # | File | What it guarantees |
+|---|------|--------------------|
+| 16 | `migration_16_tenant_isolation.sql` | Every accounting row carries `business_id`; RLS on every tenant table; one login = one business; the platform admin can no longer read/write tenant books; `audit_tenant_isolation()` |
+| 17 | `migration_17_party_extended_fields.sql` | Region/Territory/Ranking/limits/etc. on parties |
+| 18 | `migration_18_performance_indexes.sql` | `business_id`-leading indexes |
+| 19 | `migration_19_document_lifecycle_and_audit.sql` | Draft → Posted → Void; posted documents can't be edited/deleted; automatic `audit_log` |
+| 20 | `migration_20_ledger_posting_engine.sql` | Vouchers, invoices and expenses post themselves to the general ledger (`transactions`); the database refuses any unbalanced posting; void = automatic reversal |
+| 21 | `migration_21_role_based_permissions.sql` | Roles enforced in the database, not just the UI |
+| 22 | `migration_22_business_logo_and_gst.sql` | Logo upload bucket + GST number |
+| 23 | `migration_23_opening_balances.sql` | Opening balances, posted to the ledger as real balanced entries |
+| 24 | `migration_24_ledger_repair_and_security.sql` | **Fixes a bug in 20** (a party's side of a voucher was posted to a blank account), posts pre-existing vouchers/invoices/expenses to the ledger, and closes a cross-tenant hole (`post_invoice_entries` was callable by any user). **Do not skip.** |
+
+After 24, verify:
+
+```sql
+select * from audit_tenant_isolation();   -- must return ZERO rows
+select * from ledger_backfill_skipped;    -- old documents that could not be posted safely, with the reason
+```
+
+`ledger_backfill_skipped` lists any old voucher/invoice that was **not** forced
+into the ledger (lines that don't balance, an invoice with no party, subtotal ≠
+net + brokerage). Fix the source document, then re-run migration 24 — it only
+retries what is still skipped.
+
+### Automated checks (run on a scratch DB or a staging Supabase project — they create fake users)
+
+```
+psql "$DATABASE_URL" -f supabase/tests/tenant_isolation_test.sql   # 34 checks — no cross-tenant leak
+psql "$DATABASE_URL" -f supabase/tests/ledger_engine_test.sql      # 29 checks — books balance, nothing bypasses the engine
+```
+
+Both roll back everything they do. Any `FAIL` row is a launch blocker.

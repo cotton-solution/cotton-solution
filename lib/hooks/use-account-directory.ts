@@ -30,7 +30,7 @@ export function useAccountDirectory(): {
           setAccounts(
             rows
               .filter((a) => a.isActive && !a.isGroup)
-              .map((a) => ({ code: a.code, name: a.name }))
+              .map((a) => ({ code: a.code, name: a.name, accountType: a.accountType }))
           );
         }
       })
