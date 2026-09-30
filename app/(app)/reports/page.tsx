@@ -6,9 +6,14 @@ import { ArrowRight } from "lucide-react";
 import { reports } from "@/lib/reports";
 import { AccountLedgerDialog } from "@/components/account-ledger-dialog";
 import { AccountBalancesDialog } from "@/components/account-balances-dialog";
+import {
+  AccountLedgerPreviewModal,
+  type AccountLedgerPreviewParams,
+} from "@/components/account-ledger-preview-modal";
 
 export default function FinancialReportsPage() {
   const [openDialog, setOpenDialog] = useState<"account-ledger" | "account-balances" | null>(null);
+  const [previewParams, setPreviewParams] = useState<AccountLedgerPreviewParams | null>(null);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -67,10 +72,16 @@ export default function FinancialReportsPage() {
       </div>
 
       {openDialog === "account-ledger" && (
-        <AccountLedgerDialog onClose={() => setOpenDialog(null)} />
+        <AccountLedgerDialog
+          onClose={() => setOpenDialog(null)}
+          onPreview={(params) => setPreviewParams(params)}
+        />
       )}
       {openDialog === "account-balances" && (
         <AccountBalancesDialog onClose={() => setOpenDialog(null)} />
+      )}
+      {previewParams && (
+        <AccountLedgerPreviewModal params={previewParams} onClose={() => setPreviewParams(null)} />
       )}
     </div>
   );
