@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { BookOpenText, MoreHorizontal } from "lucide-react";
 import { PopupWindow, PopupRadio, PopupCheck } from "@/components/popup-window";
 import { Button } from "@/components/ui/button";
 import { AccountSearchModal } from "@/components/account-search-modal";
 import { useLedgerAccounts } from "@/lib/hooks/use-ledger-accounts";
+import type { AccountLedgerPreviewParams } from "@/components/account-ledger-preview-modal";
 
 type DateMode = "all" | "single" | "range";
 
@@ -36,8 +36,14 @@ const today = () => new Date().toISOString().slice(0, 10);
  * advance-cheque checkboxes. Preview hands the chosen filters to the
  * General Ledger report.
  */
-export function AccountLedgerDialog({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
+export function AccountLedgerDialog({
+  onClose,
+  onPreview,
+}: {
+  onClose: () => void;
+  /** Opens the printable Account Ledger preview popup for these filters. */
+  onPreview: (params: AccountLedgerPreviewParams) => void;
+}) {
   const { accounts, loading } = useLedgerAccounts();
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -63,32 +69,43 @@ export function AccountLedgerDialog({ onClose }: { onClose: () => void }) {
   }
 
   function handlePreview() {
-    const params = new URLSearchParams();
-    if (filters.accountRef) {
-      params.set("account", filters.accountRef);
-      params.set("accountLabel", filters.accountLabel);
+    if (!filters.accountRef) return; // "..." picker requires an account chosen
+    const code = filters.accountRef.replace(/^(coa|party):/, "");
+
+    const flagKeys = [
+      "showSimpleCpNarration",
+      "showJvNarration",
+      "showOnlyPurchases",
+      "showOnlySale",
+      "showOnlyPayments",
+      "withAdvancePendingCheque",
+      "sortByVoucherNo",
+      "printUrdu",
+    ] as const;
+    const flagLabels: Record<(typeof flagKeys)[number], string> = {
+      showSimpleCpNarration: "Simple CP Narration",
+      showJvNarration: "JV Narration",
+      showOnlyPurchases: "Purchases Only",
+      showOnlySale: "Sale Only",
+      showOnlyPayments: "Payments Only",
+      withAdvancePendingCheque: "With Advance/Pending Cheque",
+      sortByVoucherNo: "Sorted by Voucher No",
+      printUrdu: "Print Urdu",
+    };
+    const bits: string[] = [];
+    if (filters.dateMode === "all") bits.push("All Dates");
+    else if (filters.dateMode === "single") bits.push(`Date: ${filters.date}`);
+    else bits.push(`Range: ${filters.fromDate} to ${filters.toDate}`);
+    for (const k of flagKeys) {
+      if (filters[k]) bits.push(flagLabels[k]);
     }
-    params.set("dateMode", filters.dateMode);
-    if (filters.dateMode === "single") params.set("date", filters.date);
-    if (filters.dateMode === "range") {
-      params.set("from", filters.fromDate);
-      params.set("to", filters.toDate);
-    }
-    (
-      [
-        "showSimpleCpNarration",
-        "showJvNarration",
-        "showOnlyPurchases",
-        "showOnlySale",
-        "showOnlyPayments",
-        "withAdvancePendingCheque",
-        "sortByVoucherNo",
-        "printUrdu",
-      ] as const
-    ).forEach((k) => {
-      if (filters[k]) params.set(k, "1");
+
+    onPreview({
+      accountCode: code,
+      filterLabel: bits.join(" · "),
+      from: filters.dateMode === "range" ? filters.fromDate : filters.dateMode === "single" ? filters.date : undefined,
+      to: filters.dateMode === "range" ? filters.toDate : filters.dateMode === "single" ? filters.date : undefined,
     });
-    router.push(`/reports/account-ledger?${params.toString()}`);
     onClose();
   }
 
@@ -106,7 +123,7 @@ export function AccountLedgerDialog({ onClose }: { onClose: () => void }) {
               onChange={(v) => set("printUrdu", v)}
             />
             <div className="flex-1" />
-            <Button onClick={handlePreview}>Preview</Button>
+            <Button onClick={handlePreview} disabled={!filters.accountRef}>Preview</Button>
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
